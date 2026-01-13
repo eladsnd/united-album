@@ -5,7 +5,10 @@ import UploadSection from '../components/UploadSection';
 global.fetch = jest.fn(() =>
     Promise.resolve({
         ok: true,
-        json: () => Promise.resolve({ success: true }),
+        headers: {
+            get: (name) => name === 'content-type' ? 'application/json' : null
+        },
+        json: () => Promise.resolve({ success: true, driveLink: '/api/image/mock_id' }),
     })
 );
 
@@ -52,7 +55,7 @@ describe('UploadSection', () => {
 
         fireEvent.change(input, { target: { files: [file] } });
 
-        expect(screen.getByText(/Analyzing faces & uploading to Drive.../i)).toBeInTheDocument();
+        expect(screen.getByText(/Processing & Uploading.../i)).toBeInTheDocument();
     });
 
     it('shows success message after successful upload', async () => {

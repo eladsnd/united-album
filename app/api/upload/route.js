@@ -1,4 +1,7 @@
+import { NextResponse } from 'next/server';
 import { detectFace } from '../../../utils/faceDetection';
+import { uploadToDrive } from '../../../lib/googleDrive';
+import { savePhoto } from '../../../lib/photoStorage';
 
 export async function POST(request) {
     try {

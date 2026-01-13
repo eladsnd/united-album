@@ -40,18 +40,49 @@ export default function Home() {
                             <p style={{ fontStyle: 'italic', color: '#d4af37' }}>Capture your favorite moments</p>
                         </header>
 
-                        <div style={{ marginBottom: '2rem' }}>
-                            <h2 style={{ fontWeight: '400', marginBottom: '2rem' }}>Pick a Pose Challenge</h2>
-                            <div className="pose-grid">
-                                {challengesData.map((item) => (
-                                    <div
-                                        key={item.id}
-                                        className={`pose-item ${challenge?.id === item.id ? 'active' : ''}`}
-                                        onClick={() => setCurrentIndex(challengesData.indexOf(item))}
-                                    >
-                                        <PoseCard challenge={item} compact={true} />
+                        <div className="pose-carousel-container">
+                            <h2 style={{ fontWeight: '400', marginBottom: '3rem', textAlign: 'center', letterSpacing: '1px' }}>Pick a Pose Challenge</h2>
+
+                            <div className="carousel-wrapper">
+                                <button className="carousel-nav prev" onClick={prevChallenge} aria-label="Previous Challenge">
+                                    <ChevronLeft size={32} />
+                                </button>
+
+                                <div className="carousel-track-container">
+                                    <div className="carousel-track">
+                                        {challengesData.map((item, index) => {
+                                            const len = challengesData.length;
+                                            const isActive = index === currentIndex;
+                                            const isPrev = index === (currentIndex - 1 + len) % len;
+                                            const isNext = index === (currentIndex + 1) % len;
+
+                                            // Only render the 3 focused items
+                                            if (!isActive && !isPrev && !isNext) return null;
+
+                                            let role = "";
+                                            if (isActive) role = "active";
+                                            else if (isPrev) role = "prev-item";
+                                            else if (isNext) role = "next-item";
+
+                                            return (
+                                                <div
+                                                    key={item.id}
+                                                    className={`carousel-item ${role}`}
+                                                    onClick={() => {
+                                                        if (isPrev) prevChallenge();
+                                                        if (isNext) nextChallenge();
+                                                    }}
+                                                >
+                                                    <PoseCard challenge={item} compact={!isActive} />
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                ))}
+                                </div>
+
+                                <button className="carousel-nav next" onClick={nextChallenge} aria-label="Next Challenge">
+                                    <ChevronRight size={32} />
+                                </button>
                             </div>
                         </div>
 

@@ -5,6 +5,7 @@ import { Upload, CheckCircle, Loader2 } from 'lucide-react';
 export default function UploadSection({ folderId, poseTitle }) {
     const [status, setStatus] = useState('idle'); // idle, uploading, success, error
     const [uploadedUrl, setUploadedUrl] = useState(null);
+    const [errorMessage, setErrorMessage] = useState('');
 
     const compressImage = (file) => {
         // ... (keep compressImage as is)
@@ -65,7 +66,16 @@ export default function UploadSection({ folderId, poseTitle }) {
                 body: formData,
             });
 
-            const data = await response.json();
+            // Handle potential non-JSON responses (like 500 HTML errors)
+            const contentType = response.headers.get("content-type");
+            let data;
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                data = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response received:', text);
+                throw new Error('Server returned an unexpected response format.');
+            }
 
             if (response.ok) {
                 setStatus('success');
@@ -78,7 +88,7 @@ export default function UploadSection({ folderId, poseTitle }) {
             }
         } catch (error) {
             console.error('Upload failed:', error);
-            setErrorMessage('Network error. Please check your connection.');
+            setErrorMessage(error.message || 'Network error. Please check your connection.');
             setStatus('error');
         }
     };
