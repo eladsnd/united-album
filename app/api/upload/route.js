@@ -24,10 +24,10 @@ export async function POST(request) {
         // 2. Upload to Google Drive
         let driveData = { id: 'mock_drive_id', webViewLink: '/challenges/dip.png' };
 
-        if (!process.env.GOOGLE_SERVICE_ACCOUNT_JSON) {
-            console.error('[Upload API] GOOGLE_SERVICE_ACCOUNT_JSON is missing. Rejecting upload.');
+        if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REFRESH_TOKEN) {
+            console.error('[Upload API] OAuth 2.0 credentials missing. Rejecting upload.');
             return NextResponse.json({
-                error: 'Google Drive configuration missing. Please check your .env.local file.',
+                error: 'Google Drive OAuth configuration missing. Please check your .env.local file.',
                 code: 'CREDENTIALS_MISSING'
             }, { status: 403 });
         }
