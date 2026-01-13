@@ -6,10 +6,21 @@ export default function MobileAccessQR() {
     const canvasRef = useRef(null);
 
     useEffect(() => {
-        if (canvasRef.current) {
-            // In a real scenario, this would be the local network IP or public URL
-            const url = window.location.href;
-            QRCode.toCanvas(canvasRef.current, url, {
+        const fetchIPAndGenerateQR = async () => {
+            if (!canvasRef.current) return;
+
+            let terminalUrl = window.location.href;
+            try {
+                const res = await fetch('/api/config');
+                const { localIP } = await res.json();
+                if (localIP && localIP !== 'localhost') {
+                    terminalUrl = `http://${localIP}:3000`;
+                }
+            } catch (err) {
+                console.error('Failed to fetch local IP:', err);
+            }
+
+            QRCode.toCanvas(canvasRef.current, terminalUrl, {
                 width: 150,
                 margin: 2,
                 color: {
@@ -19,7 +30,9 @@ export default function MobileAccessQR() {
             }, (error) => {
                 if (error) console.error(error);
             });
-        }
+        };
+
+        fetchIPAndGenerateQR();
     }, []);
 
     return (
