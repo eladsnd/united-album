@@ -5,9 +5,11 @@ import PoseCard from '../components/PoseCard';
 import UploadSection from '../components/UploadSection';
 import MobileAccessQR from '../components/MobileAccessQR';
 import AlbumGallery from '../components/FaceGallery';
+import Sidebar from '../components/Sidebar';
 import challengesData from '../data/challenges.json';
 
 export default function Home() {
+    const [activeSection, setActiveSection] = useState('challenge');
     const [currentIndex, setCurrentIndex] = useState(-1);
 
     useEffect(() => {
@@ -27,42 +29,57 @@ export default function Home() {
     const challenge = currentIndex >= 0 ? challengesData[currentIndex] : null;
 
     return (
-        <main>
-            <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
-                <h1 style={{ fontSize: '2.5rem', letterSpacing: '2px', fontWeight: '400' }}>UNITED ALBUM</h1>
-                <p style={{ fontStyle: 'italic', color: '#d4af37' }}>Capture your favorite moments</p>
-            </header>
+        <div className="app-layout">
+            <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
 
-            <div style={{ marginBottom: '2rem' }}>
-                <h2 style={{ fontWeight: '400', marginBottom: '2rem' }}>Pick a Pose Challenge</h2>
-                <div className="pose-grid">
-                    {challengesData.map((item) => (
-                        <div
-                            key={item.id}
-                            className={`pose-item ${challenge?.id === item.id ? 'active' : ''}`}
-                            onClick={() => setCurrentIndex(challengesData.indexOf(item))}
-                        >
-                            <PoseCard challenge={item} compact={true} />
+            <main>
+                {activeSection === 'challenge' && (
+                    <section className="animate-in">
+                        <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
+                            <h1 style={{ fontSize: '2.5rem', letterSpacing: '2px', fontWeight: '400' }}>UNITED ALBUM</h1>
+                            <p style={{ fontStyle: 'italic', color: '#d4af37' }}>Capture your favorite moments</p>
+                        </header>
+
+                        <div style={{ marginBottom: '2rem' }}>
+                            <h2 style={{ fontWeight: '400', marginBottom: '2rem' }}>Pick a Pose Challenge</h2>
+                            <div className="pose-grid">
+                                {challengesData.map((item) => (
+                                    <div
+                                        key={item.id}
+                                        className={`pose-item ${challenge?.id === item.id ? 'active' : ''}`}
+                                        onClick={() => setCurrentIndex(challengesData.indexOf(item))}
+                                    >
+                                        <PoseCard challenge={item} compact={true} />
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    ))}
-                </div>
-            </div>
 
-            {challenge && (
-                <div className="card upload-area">
-                    <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
-                    <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
-                </div>
-            )}
+                        {challenge && (
+                            <div className="card upload-area">
+                                <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
+                                <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
+                            </div>
+                        )}
+                    </section>
+                )}
 
-            <AlbumGallery />
+                {activeSection === 'gallery' && (
+                    <section className="animate-in">
+                        <AlbumGallery />
+                    </section>
+                )}
 
-            <MobileAccessQR />
+                {activeSection === 'access' && (
+                    <section className="animate-in">
+                        <MobileAccessQR />
+                    </section>
+                )}
 
-            <footer style={{ marginTop: 'auto', padding: '2rem', textAlign: 'center', fontSize: '0.8rem', opacity: 0.6 }}>
-                &copy; 2026 United Album. All rights reserved.
-            </footer>
-
-        </main>
+                <footer style={{ marginTop: 'auto', padding: '2rem', textAlign: 'center', fontSize: '0.8rem', opacity: 0.6 }}>
+                    &copy; 2026 United Album. All rights reserved.
+                </footer>
+            </main>
+        </div>
     );
 }

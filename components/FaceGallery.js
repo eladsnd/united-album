@@ -37,12 +37,12 @@ export default function AlbumGallery() {
 
     return (
         <div className="face-gallery card" style={{ marginTop: '2rem' }}>
-            <h2 style={{ fontWeight: '400', marginBottom: '1.5rem' }}>Album Gallery</h2>
+            <h2 style={{ fontWeight: '400', marginBottom: '2rem', fontFamily: "'Playfair Display', serif" }}>Album Gallery</h2>
 
-            <div className="filters" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>Filter by Pose</p>
-                    <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div className="filter-container">
+                <div className="filter-group">
+                    <span className="filter-label">Filter by Pose</span>
+                    <div className="filter-chips">
                         <button className={`chip ${poseFilter === 'all' ? 'active' : ''}`} onClick={() => setPoseFilter('all')}>All Poses</button>
                         {uniquePoses.map(poseId => (
                             <button
@@ -56,9 +56,9 @@ export default function AlbumGallery() {
                     </div>
                 </div>
 
-                <div style={{ textAlign: 'center' }}>
-                    <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>Filter by Face</p>
-                    <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div className="filter-group">
+                    <span className="filter-label">Filter by Face</span>
+                    <div className="filter-chips">
                         <button className={`chip ${faceFilter === 'all' ? 'active' : ''}`} onClick={() => setFaceFilter('all')}>All Faces</button>
                         {uniqueFaces.map(faceId => (
                             <button
@@ -73,25 +73,34 @@ export default function AlbumGallery() {
                 </div>
             </div>
 
-            <div className="grid">
-                {loading ? (
+            {loading ? (
+                <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.6 }}>
                     <p>Loading your moments...</p>
-                ) : filteredPhotos.length === 0 ? (
-                    <p style={{ opacity: 0.5 }}>No photos yet. Be the first!</p>
-                ) : (
-                    filteredPhotos.map(photo => (
-                        <div key={photo.id} className="photo-item">
+                </div>
+            ) : filteredPhotos.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>
+                    <p>No photos yet. Be the first to capture a moment!</p>
+                </div>
+            ) : (
+                <div className="gallery-grid">
+                    {filteredPhotos.map(photo => (
+                        <div key={photo.id} className="photo-card">
                             <Image
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
                                 alt="Wedding Photo"
-                                width={150}
-                                height={150}
-                                style={{ objectFit: 'cover', borderRadius: '8px' }}
+                                fill
+                                unoptimized={true}
+                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                className="gallery-image"
                             />
+                            <div className="photo-info">
+                                <div>{photo.poseId}</div>
+                                <div style={{ fontSize: '0.6rem', opacity: 0.8 }}>{new Date(photo.timestamp).toLocaleDateString()}</div>
+                            </div>
                         </div>
-                    ))
-                )}
-            </div>
+                    ))}
+                </div>
+            )}
         </div>
     );
 }

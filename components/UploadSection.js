@@ -4,10 +4,10 @@ import { Upload, CheckCircle, Loader2 } from 'lucide-react';
 
 export default function UploadSection({ folderId, poseTitle }) {
     const [status, setStatus] = useState('idle'); // idle, uploading, success, error
-    const [errorMessage, setErrorMessage] = useState('');
+    const [uploadedUrl, setUploadedUrl] = useState(null);
 
     const compressImage = (file) => {
-        // Bypass compression in test environments where canvas/blob might not be fully supported
+        // ... (keep compressImage as is)
         if (typeof window === 'undefined' || !window.HTMLCanvasElement || process.env.NODE_ENV === 'test') {
             return Promise.resolve(file);
         }
@@ -50,9 +50,9 @@ export default function UploadSection({ folderId, poseTitle }) {
         if (!file) return;
 
         setStatus('uploading');
+        setUploadedUrl(null);
 
         try {
-            // Compress image before upload
             const compressedFile = await compressImage(file);
 
             const formData = new FormData();
@@ -65,13 +65,15 @@ export default function UploadSection({ folderId, poseTitle }) {
                 body: formData,
             });
 
+            const data = await response.json();
+
             if (response.ok) {
                 setStatus('success');
+                setUploadedUrl(data.driveLink);
                 // Trigger gallery refresh
                 window.dispatchEvent(new Event('photoUploaded'));
             } else {
-                const errorData = await response.json();
-                setErrorMessage(errorData.error || 'Upload failed. Please try again.');
+                setErrorMessage(data.error || 'Upload failed. Please try again.');
                 setStatus('error');
             }
         } catch (error) {
@@ -81,43 +83,146 @@ export default function UploadSection({ folderId, poseTitle }) {
         }
     };
 
+    const reset = () => {
+        setStatus('idle');
+        setUploadedUrl(null);
+        setErrorMessage('');
+    };
+
     return (
         <div className="upload-section">
             {status === 'idle' && (
-                <label className="upload-label">
-                    <Upload size={24} />
-                    <span>Upload your Challenge Photo</span>
+                <label className="upload-label glass-effect">
+                    <Upload size={32} />
+                    <span className="upload-text">Upload your {poseTitle || 'Challenge'} Photo</span>
+                    <span className="upload-subtext">Click to browse or take a photo</span>
                     <input type="file" onChange={handleUpload} style={{ display: 'none' }} accept="image/*" />
                 </label>
             )}
 
             {status === 'uploading' && (
-                <div className="status-box">
-                    <Loader2 className="animate-spin" size={24} />
-                    <span>Analyzing faces & uploading to Drive...</span>
+                <div className="status-box glass-effect">
+                    <Loader2 className="animate-spin" size={32} />
+                    <span className="status-title">Processing & Uploading...</span>
+                    <span className="status-desc">Optimizing image for the album</span>
                 </div>
             )}
 
             {status === 'success' && (
-                <div className="status-box success">
-                    <CheckCircle size={24} />
-                    <span>Beautiful! Your photo is now in the album.</span>
-                    <button className="btn" onClick={() => setStatus('idle')} style={{ marginTop: '1rem' }}>
-                        Take Another Challenge
+                <div className="status-box success glass-effect">
+                    <div className="success-icon-wrapper">
+                        <CheckCircle size={32} />
+                    </div>
+                    <span className="status-title">Photo Uploaded!</span>
+                    <p className="status-desc">Beautiful! Your photo is now in the album.</p>
+
+                    {uploadedUrl && (
+                        <div className="uploaded-preview">
+                            <img src={uploadedUrl} alt="Uploaded" className="preview-img" referrerPolicy="no-referrer" />
+                        </div>
+                    )}
+
+                    <button className="btn primary-btn" onClick={reset}>
+                        Take Another Photo
                     </button>
                 </div>
             )}
 
             {status === 'error' && (
-                <div className="status-box" style={{ color: '#d32f2f' }}>
-                    <span style={{ fontWeight: '600' }}>Oops! something went wrong.</span>
-                    <span style={{ fontSize: '0.9rem', marginTop: '0.2rem' }}>{errorMessage}</span>
-                    <button className="btn" onClick={() => setStatus('idle')} style={{ marginTop: '1rem' }}>
+                <div className="status-box error glass-effect">
+                    <span className="status-title">Upload Failed</span>
+                    <p className="status-desc">{errorMessage}</p>
+                    <button className="btn" onClick={reset}>
                         Try Again
                     </button>
                 </div>
             )}
 
+            <style jsx>{`
+                .upload-section {
+                    width: 100%;
+                    max-width: 400px;
+                    margin: 2rem auto;
+                }
+                .glass-effect {
+                    background: rgba(255, 255, 255, 0.9);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.4);
+                    border-radius: 20px;
+                    padding: 2.5rem;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    text-align: center;
+                }
+                .upload-label {
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    color: var(--primary);
+                    border: 2px dashed rgba(var(--primary-rgb), 0.3);
+                }
+                .upload-label:hover {
+                    transform: translateY(-5px);
+                    background: var(--cream);
+                    border-color: var(--primary);
+                }
+                .upload-text {
+                    font-family: 'Playfair Display', serif;
+                    font-size: 1.25rem;
+                    margin: 1rem 0 0.5rem;
+                    font-weight: 600;
+                }
+                .upload-subtext {
+                    font-size: 0.9rem;
+                    opacity: 0.7;
+                }
+                .status-box {
+                    width: 100%;
+                }
+                .status-title {
+                    font-family: 'Playfair Display', serif;
+                    font-size: 1.5rem;
+                    margin: 1rem 0;
+                    color: var(--text-dark);
+                }
+                .status-desc {
+                    margin-bottom: 1.5rem;
+                    color: var(--text-dark);
+                    opacity: 0.8;
+                }
+                .success-icon-wrapper {
+                    color: #4caf50;
+                    margin-bottom: 0.5rem;
+                }
+                .uploaded-preview {
+                    width: 100%;
+                    margin-bottom: 1.5rem;
+                    border-radius: 12px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                }
+                .preview-img {
+                    width: 100%;
+                    height: 200px;
+                    object-fit: cover;
+                }
+                .btn {
+                    padding: 0.8rem 1.5rem;
+                    border-radius: 50px;
+                    border: none;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+                .primary-btn {
+                    background: var(--primary);
+                    color: white;
+                }
+                .primary-btn:hover {
+                    transform: scale(1.05);
+                    box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
+                }
+            `}</style>
         </div>
     );
 }

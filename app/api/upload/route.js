@@ -1,6 +1,4 @@
-import { NextResponse } from 'next/server';
-import { uploadToDrive } from '../../../lib/googleDrive';
-import { getPhotos, savePhoto } from '../../../utils/photos';
+import { detectFace } from '../../../utils/faceDetection';
 
 export async function POST(request) {
     try {
@@ -18,8 +16,10 @@ export async function POST(request) {
 
         const buffer = Buffer.from(await file.arrayBuffer());
 
-        // 1. Face Recognition (Mock detection for now)
-        const faceId = 'person_' + Math.floor(Math.random() * 5);
+        // 1. Face Recognition using face-api.js
+        console.log('[Upload API] Running face detection...');
+        const faceId = await detectFace(buffer);
+        console.log(`[Upload API] Face detected: ${faceId}`);
 
         // 2. Upload to Google Drive
         let driveData = { id: 'mock_drive_id', webViewLink: '/challenges/dip.png' };
@@ -45,11 +45,14 @@ export async function POST(request) {
         }
 
         // 3. Save Metadata locally using our utility
+        // Construct local proxy URL instead of a direct Google Drive link
+        const proxyImageUrl = `/api/image/${driveData.id}`;
+
         const newPhoto = {
             id: Date.now(),
             name: file.name,
             driveId: driveData.id,
-            url: driveData.webViewLink,
+            url: proxyImageUrl,
             faceId: faceId,
             poseId: poseId,
             timestamp: new Date().toISOString()
@@ -67,7 +70,7 @@ export async function POST(request) {
             success: true,
             message: 'Photo uploaded and sorted by pose!',
             faceId: faceId,
-            driveLink: driveData.webViewLink
+            driveLink: proxyImageUrl
         });
     } catch (error) {
         console.error('Upload error:', error);
