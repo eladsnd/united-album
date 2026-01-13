@@ -9,6 +9,32 @@ global.fetch = jest.fn(() =>
     })
 );
 
+// Mock FileReader and Image for compression
+class MockFileReader {
+    readAsDataURL() {
+        setTimeout(() => {
+            this.onload({ target: { result: 'data:image/png;base64,hello' } });
+        }, 0);
+    }
+}
+global.FileReader = MockFileReader;
+
+global.Image = class {
+    constructor() {
+        setTimeout(() => {
+            if (this.onload) this.onload();
+        }, 0);
+    }
+    set src(val) { }
+    get width() { return 100; }
+    get height() { return 100; }
+};
+
+// Mock Canvas.toBlob
+HTMLCanvasElement.prototype.toBlob = function (callback) {
+    callback(new Blob(['hello'], { type: 'image/jpeg' }));
+};
+
 describe('UploadSection', () => {
     beforeEach(() => {
         fetch.mockClear();

@@ -2,9 +2,10 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 
-export default function FaceGallery() {
+export default function AlbumGallery() {
     const [photos, setPhotos] = useState([]);
-    const [filter, setFilter] = useState('all');
+    const [faceFilter, setFaceFilter] = useState('all');
+    const [poseFilter, setPoseFilter] = useState('all');
     const [loading, setLoading] = useState(true);
 
     const fetchPhotos = async () => {
@@ -21,37 +22,55 @@ export default function FaceGallery() {
 
     useEffect(() => {
         fetchPhotos();
-        // Refresh periodically or on custom event
         window.addEventListener('photoUploaded', fetchPhotos);
         return () => window.removeEventListener('photoUploaded', fetchPhotos);
     }, []);
 
-    const uniqueFaces = [...new Set(photos.map(p => p.faceId))];
+    const uniqueFaces = [...new Set(photos.map(p => p.faceId).filter(Boolean))];
+    const uniquePoses = [...new Set(photos.map(p => p.poseId).filter(Boolean))];
 
-    const filteredPhotos = filter === 'all'
-        ? photos
-        : photos.filter(p => p.faceId === filter);
+    const filteredPhotos = photos.filter(p => {
+        const faceMatch = faceFilter === 'all' || p.faceId === faceFilter;
+        const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
+        return faceMatch && poseMatch;
+    });
 
     return (
         <div className="face-gallery card" style={{ marginTop: '2rem' }}>
-            <h2 style={{ fontWeight: '400', marginBottom: '1.5rem' }}>Photos by Face</h2>
+            <h2 style={{ fontWeight: '400', marginBottom: '1.5rem' }}>Album Gallery</h2>
 
-            <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-                <button
-                    className={`chip ${filter === 'all' ? 'active' : ''}`}
-                    onClick={() => setFilter('all')}
-                >
-                    All Photos
-                </button>
-                {uniqueFaces.map(faceId => (
-                    <button
-                        key={faceId}
-                        className={`chip ${filter === faceId ? 'active' : ''}`}
-                        onClick={() => setFilter(faceId)}
-                    >
-                        {faceId === 'face_1' ? 'Person A' : faceId === 'face_2' ? 'Person B' : `Face ${faceId}`}
-                    </button>
-                ))}
+            <div className="filters" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>Filter by Pose</p>
+                    <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button className={`chip ${poseFilter === 'all' ? 'active' : ''}`} onClick={() => setPoseFilter('all')}>All Poses</button>
+                        {uniquePoses.map(poseId => (
+                            <button
+                                key={poseId}
+                                className={`chip ${poseFilter === poseId ? 'active' : ''}`}
+                                onClick={() => setPoseFilter(poseId)}
+                            >
+                                {poseId}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div style={{ textAlign: 'center' }}>
+                    <p style={{ fontSize: '0.8rem', opacity: 0.6, marginBottom: '0.5rem' }}>Filter by Face</p>
+                    <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button className={`chip ${faceFilter === 'all' ? 'active' : ''}`} onClick={() => setFaceFilter('all')}>All Faces</button>
+                        {uniqueFaces.map(faceId => (
+                            <button
+                                key={faceId}
+                                className={`chip ${faceFilter === faceId ? 'active' : ''}`}
+                                onClick={() => setFaceFilter(faceId)}
+                            >
+                                {faceId}
+                            </button>
+                        ))}
+                    </div>
+                </div>
             </div>
 
             <div className="grid">
@@ -62,42 +81,17 @@ export default function FaceGallery() {
                 ) : (
                     filteredPhotos.map(photo => (
                         <div key={photo.id} className="photo-item">
-                            {/* Note: In a real app, this URL would be from Drive or a local proxy */}
-                            <Image src={photo.url || '/challenges/dip.png'} alt="Wedding Photo" width={150} height={150} style={{ objectFit: 'cover', borderRadius: '8px' }} />
+                            <Image
+                                src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
+                                alt="Wedding Photo"
+                                width={150}
+                                height={150}
+                                style={{ objectFit: 'cover', borderRadius: '8px' }}
+                            />
                         </div>
                     ))
                 )}
             </div>
-
-            <style jsx>{`
-        .filter-chips {
-          justify-content: center;
-        }
-        .chip {
-          padding: 0.4rem 1rem;
-          border-radius: 20px;
-          border: 1px solid #d4af37;
-          background: none;
-          color: #d4af37;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .chip.active {
-          background: #d4af37;
-          color: white;
-        }
-        .grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-          gap: 1rem;
-        }
-        .photo-item {
-          aspect-ratio: 1/1;
-          background: #eee;
-          border-radius: 8px;
-          overflow: hidden;
-        }
-      `}</style>
         </div>
     );
 }

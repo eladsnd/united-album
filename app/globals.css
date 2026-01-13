@@ -1,7 +1,10 @@
 :root {
-  --primary: #d4af37; /* Gold */
-  --secondary: #2c3e50; /* Deep Blue/Black */
-  --background: #fffdf9; /* Cream */
+  --primary: #d4af37;
+  /* Gold */
+  --secondary: #2c3e50;
+  /* Deep Blue/Black */
+  --background: #fffdf9;
+  /* Cream */
   --foreground: #2c3e50;
   --accent: #f8f1e5;
   --glass: rgba(255, 255, 255, 0.7);
@@ -31,7 +34,9 @@ main {
   width: 100%;
 }
 
-h1, h2, h3 {
+h1,
+h2,
+h3 {
   color: var(--secondary);
   margin-bottom: 1rem;
   text-align: center;
@@ -73,4 +78,126 @@ h1, h2, h3 {
   font-style: italic;
   margin: 1rem 0;
   border-radius: 0 8px 8px 0;
+}
+
+/* Pose Cards and Grid */
+.pose-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.pose-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  height: 100%;
+}
+
+.pose-card.compact {
+  gap: 0.5rem;
+  padding: 1rem;
+}
+
+.pose-image-container {
+  width: 100%;
+  max-width: 400px;
+  aspect-ratio: 1/1;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+}
+
+.pose-card.compact .pose-image-container {
+  max-width: 200px;
+}
+
+.pose-item {
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  background: var(--glass);
+}
+
+.pose-item:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.pose-item.active {
+  border-color: var(--primary);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.4);
+}
+
+/* Upload Section */
+.upload-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.upload-label {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: var(--primary);
+  color: white;
+  padding: 1rem 2rem;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.upload-label:hover {
+  background: #b8962d;
+  transform: scale(1.05);
+}
+
+.status-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem;
+  text-align: center;
+}
+
+.status-box.success {
+  color: #2e7d32;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.upload-area {
+  animation: slideUp 0.5s ease-out;
 }

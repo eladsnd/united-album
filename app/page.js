@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import PoseCard from '../components/PoseCard';
 import UploadSection from '../components/UploadSection';
 import MobileAccessQR from '../components/MobileAccessQR';
-import FaceGallery from '../components/FaceGallery';
+import AlbumGallery from '../components/FaceGallery';
 import challengesData from '../data/challenges.json';
 
 export default function Home() {
@@ -33,27 +33,29 @@ export default function Home() {
                 <p style={{ fontStyle: 'italic', color: '#d4af37' }}>Capture your favorite moments</p>
             </header>
 
-            <div className="card">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <h2 style={{ margin: 0, fontWeight: '400' }}>Challenge {currentIndex + 1} of {challengesData.length}</h2>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="nav-btn" onClick={prevChallenge} aria-label="Previous Challenge">
-                            <ChevronLeft size={20} />
-                        </button>
-                        <button className="nav-btn" onClick={nextChallenge} aria-label="Next Challenge">
-                            <ChevronRight size={20} />
-                        </button>
-                    </div>
+            <div style={{ marginBottom: '2rem' }}>
+                <h2 style={{ fontWeight: '400', marginBottom: '2rem' }}>Pick a Pose Challenge</h2>
+                <div className="pose-grid">
+                    {challengesData.map((item) => (
+                        <div
+                            key={item.id}
+                            className={`pose-item ${challenge?.id === item.id ? 'active' : ''}`}
+                            onClick={() => setCurrentIndex(challengesData.indexOf(item))}
+                        >
+                            <PoseCard challenge={item} compact={true} />
+                        </div>
+                    ))}
                 </div>
-
-                {challenge && (
-                    <PoseCard challenge={challenge} />
-                )}
-
-                <UploadSection />
             </div>
 
-            <FaceGallery />
+            {challenge && (
+                <div className="card upload-area">
+                    <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
+                    <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
+                </div>
+            )}
+
+            <AlbumGallery />
 
             <MobileAccessQR />
 
@@ -61,26 +63,6 @@ export default function Home() {
                 &copy; 2026 United Album. All rights reserved.
             </footer>
 
-            <style jsx>{`
-                .nav-btn {
-                    background: var(--accent);
-                    border: 1px solid var(--glass-border);
-                    color: var(--primary);
-                    width: 40px;
-                    height: 40px;
-                    border-radius: 50%;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    cursor: pointer;
-                    transition: all 0.2s ease;
-                }
-                .nav-btn:hover {
-                    background: var(--primary);
-                    color: white;
-                    transform: scale(1.1);
-                }
-            `}</style>
         </main>
     );
 }

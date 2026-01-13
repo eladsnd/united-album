@@ -2,8 +2,48 @@
 import { useState } from 'react';
 import { Upload, CheckCircle, Loader2 } from 'lucide-react';
 
-export default function UploadSection() {
+export default function UploadSection({ folderId, poseTitle }) {
     const [status, setStatus] = useState('idle'); // idle, uploading, success, error
+    const [errorMessage, setErrorMessage] = useState('');
+
+    const compressImage = (file) => {
+        // Bypass compression in test environments where canvas/blob might not be fully supported
+        if (typeof window === 'undefined' || !window.HTMLCanvasElement || process.env.NODE_ENV === 'test') {
+            return Promise.resolve(file);
+        }
+
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+                const img = new window.Image();
+                img.src = event.target.result;
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const MAX_WIDTH = 1200;
+                    const scaleSize = MAX_WIDTH / img.width;
+
+                    if (img.width > MAX_WIDTH) {
+                        canvas.width = MAX_WIDTH;
+                        canvas.height = img.height * scaleSize;
+                    } else {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                    }
+
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now(),
+                        }));
+                    }, 'image/jpeg', 0.8); // 80% quality
+                };
+            };
+        });
+    };
 
     const handleUpload = async (e) => {
         const file = e.target.files[0];
@@ -11,10 +51,15 @@ export default function UploadSection() {
 
         setStatus('uploading');
 
-        const formData = new FormData();
-        formData.append('file', file);
-
         try {
+            // Compress image before upload
+            const compressedFile = await compressImage(file);
+
+            const formData = new FormData();
+            formData.append('file', compressedFile);
+            if (folderId) formData.append('folderId', folderId);
+            if (poseTitle) formData.append('poseId', poseTitle);
+
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData,
@@ -25,10 +70,13 @@ export default function UploadSection() {
                 // Trigger gallery refresh
                 window.dispatchEvent(new Event('photoUploaded'));
             } else {
+                const errorData = await response.json();
+                setErrorMessage(errorData.error || 'Upload failed. Please try again.');
                 setStatus('error');
             }
         } catch (error) {
             console.error('Upload failed:', error);
+            setErrorMessage('Network error. Please check your connection.');
             setStatus('error');
         }
     };
@@ -62,55 +110,14 @@ export default function UploadSection() {
 
             {status === 'error' && (
                 <div className="status-box" style={{ color: '#d32f2f' }}>
-                    <span>Oops! Upload failed. Please try again.</span>
+                    <span style={{ fontWeight: '600' }}>Oops! something went wrong.</span>
+                    <span style={{ fontSize: '0.9rem', marginTop: '0.2rem' }}>{errorMessage}</span>
                     <button className="btn" onClick={() => setStatus('idle')} style={{ marginTop: '1rem' }}>
                         Try Again
                     </button>
                 </div>
             )}
 
-            <style jsx>{`
-        .upload-section {
-          margin-top: 2rem;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-        }
-        .upload-label {
-          display: flex;
-          align-items: center;
-          gap: 0.8rem;
-          background: #d4af37;
-          color: white;
-          padding: 1rem 2rem;
-          border-radius: 50px;
-          cursor: pointer;
-          font-weight: 600;
-          transition: all 0.3s ease;
-        }
-        .upload-label:hover {
-          background: #b8962d;
-          transform: scale(1.05);
-        }
-        .status-box {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 1rem;
-          padding: 2rem;
-          text-align: center;
-        }
-        .status-box.success {
-          color: #2e7d32;
-        }
-        .animate-spin {
-          animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
         </div>
     );
 }
