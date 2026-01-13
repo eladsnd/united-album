@@ -1,0 +1,76 @@
+:root {
+  --primary: #d4af37; /* Gold */
+  --secondary: #2c3e50; /* Deep Blue/Black */
+  --background: #fffdf9; /* Cream */
+  --foreground: #2c3e50;
+  --accent: #f8f1e5;
+  --glass: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(212, 175, 55, 0.3);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: 'Playfair Display', serif, system-ui, -apple-system, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+  width: 100%;
+}
+
+h1, h2, h3 {
+  color: var(--secondary);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.card {
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  margin-bottom: 2rem;
+}
+
+.btn {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
+}
+
+.instruction-box {
+  background: var(--accent);
+  border-left: 4px solid var(--primary);
+  padding: 1rem;
+  font-style: italic;
+  margin: 1rem 0;
+  border-radius: 0 8px 8px 0;
+}
