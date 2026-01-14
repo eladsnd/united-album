@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { detectFace } from '../../../utils/faceDetection';
 import { uploadToDrive } from '../../../lib/googleDrive';
 import { savePhoto } from '../../../lib/photoStorage';
 
@@ -9,20 +8,21 @@ export async function POST(request) {
         const file = formData.get('file');
         const folderId = formData.get('folderId') || process.env.GOOGLE_DRIVE_FOLDER_ID;
         const poseId = formData.get('poseId') || 'unknown_pose';
+        const mainFaceId = formData.get('mainFaceId') || 'unknown';
+        const faceIdsStr = formData.get('faceIds') || 'unknown';
+        const faceBoxesStr = formData.get('faceBoxes') || '[]';
 
         if (!file) {
             console.error('[Upload API] No file found in request');
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
 
-        console.log(`[Upload API] Processing upload for file: ${file.name}, pose: ${poseId}, target folder: ${folderId}`);
+        console.log(`[Upload API] Processing upload for file: ${file.name}, pose: ${poseId}, main face: ${mainFaceId}`);
 
         const buffer = Buffer.from(await file.arrayBuffer());
 
-        // 1. Face Recognition using face-api.js
-        console.log('[Upload API] Running face detection...');
-        const faceId = await detectFace(buffer);
-        console.log(`[Upload API] Face detected: ${faceId}`);
+        // Face detection now happens client-side before upload
+        console.log(`[Upload API] Using client-detected face IDs`);
 
         // 2. Upload to Google Drive
         let driveData = { id: 'mock_drive_id', webViewLink: '/challenges/dip.png' };
@@ -51,30 +51,42 @@ export async function POST(request) {
         // Construct local proxy URL instead of a direct Google Drive link
         const proxyImageUrl = `/api/image/${driveData.id}`;
 
+        // Parse face IDs and boxes
+        const faceIdArray = faceIdsStr.split(',').map(id => id.trim()).filter(id => id);
+        let faceBoxes = [];
+        try {
+            faceBoxes = JSON.parse(faceBoxesStr);
+        } catch (e) {
+            console.warn('[Upload API] Failed to parse face boxes:', e);
+        }
+
         const newPhoto = {
             id: Date.now(),
             name: file.name,
             driveId: driveData.id,
             url: proxyImageUrl,
-            faceId: faceId,
+            mainFaceId: mainFaceId, // Primary face for filtering/grouping
+            faceIds: faceIdArray, // All faces in the photo
+            faceBoxes: faceBoxes, // Bounding boxes for face cropping
             poseId: poseId,
             timestamp: new Date().toISOString()
         };
 
+        console.log('[Upload API] Saving photo metadata:', JSON.stringify(newPhoto, null, 2));
+
         try {
-            savePhoto(newPhoto);
-            console.log('[Upload API] Local metadata saved successfully');
-        } catch (saveErr) {
-            console.error('[Upload API] Failed to save local metadata:', saveErr.message);
-            throw saveErr; // This is critical
+            const savedPhoto = savePhoto(newPhoto);
+            console.log(`[Upload API] Photo saved successfully: ${savedPhoto.id}`);
+            return NextResponse.json({ success: true, photo: savedPhoto });
+        } catch (storageErr) {
+            console.error('[Upload API] Failed to save photo metadata:', storageErr);
+            // Attempt to cleanup drive file if metadata save fails?
+            return NextResponse.json({
+                error: 'Failed to save photo metadata: ' + storageErr.message,
+                code: 'METADATA_SAVE_FAILED'
+            }, { status: 500 });
         }
 
-        return NextResponse.json({
-            success: true,
-            message: 'Photo uploaded and sorted by pose!',
-            faceId: faceId,
-            driveLink: proxyImageUrl
-        });
     } catch (error) {
         console.error('Upload error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

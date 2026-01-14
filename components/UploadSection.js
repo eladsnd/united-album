@@ -1,11 +1,23 @@
 "use strict";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Upload, CheckCircle, Loader2 } from 'lucide-react';
+import { detectFaceInBrowser, loadFaceModels } from '../utils/clientFaceDetection';
 
 export default function UploadSection({ folderId, poseTitle }) {
-    const [status, setStatus] = useState('idle'); // idle, uploading, success, error
+    const [status, setStatus] = useState('idle'); // idle, analyzing, uploading, success, error
     const [uploadedUrl, setUploadedUrl] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
+    const [modelsReady, setModelsReady] = useState(false);
+
+    // Load face detection models on component mount
+    useEffect(() => {
+        loadFaceModels().then(loaded => {
+            setModelsReady(loaded);
+            if (loaded) {
+                console.log('[Upload] Face detection models ready');
+            }
+        });
+    }, []);
 
     const compressImage = (file) => {
         // ... (keep compressImage as is)
@@ -50,14 +62,52 @@ export default function UploadSection({ folderId, poseTitle }) {
         const file = e.target.files[0];
         if (!file) return;
 
-        setStatus('uploading');
+        setStatus('analyzing');
         setUploadedUrl(null);
+        setErrorMessage('');
 
         try {
+            // Step 1: Detect face in browser
+            let faceIds = ['unknown'];
+            let mainFaceId = 'unknown';
+            let faceDescriptors = [];
+            let faceBoxes = [];
+
+            if (modelsReady) {
+                const result = await detectFaceInBrowser(file);
+                faceIds = result.faceIds;
+                mainFaceId = result.mainFaceId;
+                faceDescriptors = result.descriptors;
+                faceBoxes = result.boxes || [];
+
+                // Save face descriptors ONLY if faces were actually detected
+                if (result.descriptors && result.descriptors.length > 0 && result.faceIds[0] !== 'unknown') {
+                    await Promise.all(
+                        result.faceIds.map((faceId, index) =>
+                            fetch('/api/faces', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    faceId,
+                                    descriptor: result.descriptors[index],
+                                    box: result.boxes[index] // Save bounding box
+                                })
+                            })
+                        )
+                    );
+                }
+            }
+
+            // Step 2: Compress image
+            setStatus('uploading');
             const compressedFile = await compressImage(file);
 
+            // Step 3: Upload to server
             const formData = new FormData();
             formData.append('file', compressedFile);
+            formData.append('mainFaceId', mainFaceId); // Primary face for grouping
+            formData.append('faceIds', faceIds.join(',')); // All detected faces
+            formData.append('faceBoxes', JSON.stringify(faceBoxes)); // Face bounding boxes
             if (folderId) formData.append('folderId', folderId);
             if (poseTitle) formData.append('poseId', poseTitle);
 
@@ -108,6 +158,14 @@ export default function UploadSection({ folderId, poseTitle }) {
                     <span className="upload-subtext">Click to browse or take a photo</span>
                     <input type="file" onChange={handleUpload} style={{ display: 'none' }} accept="image/*" />
                 </label>
+            )}
+
+            {status === 'analyzing' && (
+                <div className="status-box glass-effect">
+                    <Loader2 className="animate-spin" size={32} />
+                    <span className="status-title">Analyzing Face...</span>
+                    <span className="status-desc">Detecting and matching face</span>
+                </div>
             )}
 
             {status === 'uploading' && (
