@@ -465,6 +465,21 @@ h3 {
   justify-content: center;
 }
 
+.face-thumb-img {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: center;
+  border: 2px solid var(--glass-border);
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  flex-shrink: 0;
+}
+
 .carousel-track {
   display: flex;
   align-items: center;
