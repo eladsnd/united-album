@@ -15,7 +15,11 @@ export async function GET(request, { params }) {
         if (photo) {
             const timestamp = new Date(photo.timestamp).getTime();
             const poseSlug = photo.poseId
-                ? photo.poseId.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()
+                ? photo.poseId
+                    .replace(/[^a-zA-Z0-9]/g, '-')  // Replace special chars with dash
+                    .replace(/-+/g, '-')             // Collapse multiple dashes
+                    .replace(/^-|-$/g, '')           // Remove leading/trailing dashes
+                    .toLowerCase()
                 : 'photo';
             filename = `${poseSlug}-${timestamp}.jpg`;
         } else {
@@ -25,10 +29,18 @@ export async function GET(request, { params }) {
 
         const stream = await getFileStream(driveId);
 
-        return new NextResponse(stream, {
+        // Convert Node stream to Web stream for Next.js compatibility
+        const chunks = [];
+        for await (const chunk of stream) {
+            chunks.push(chunk);
+        }
+        const buffer = Buffer.concat(chunks);
+
+        return new NextResponse(buffer, {
             headers: {
                 'Content-Type': 'image/jpeg',
                 'Content-Disposition': `attachment; filename="${filename}"`,
+                'Content-Length': buffer.length.toString(),
             },
         });
     } catch (error) {
