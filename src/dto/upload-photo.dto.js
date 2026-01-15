@@ -82,9 +82,9 @@ export class DeletePhotoDto {
   photoId;
 
   /**
-   * Requester's uploader ID
+   * Requester's uploader ID (optional if admin)
    */
-  @IsNotEmpty({ message: 'Uploader ID is required' })
+  @IsOptional()
   @IsString()
   uploaderId;
 

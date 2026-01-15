@@ -63,6 +63,14 @@ export default function AlbumGallery() {
 
     const handleDeletePhoto = async (photoId) => {
         const adminMode = isAdmin();
+        const uploaderId = getUploaderId();
+
+        // If not admin and no uploaderId, show helpful message
+        if (!adminMode && !uploaderId) {
+            alert('You need to upload at least one photo before you can delete photos. This helps us verify photo ownership.');
+            return;
+        }
+
         const confirmMsg = adminMode
             ? 'ADMIN: Permanently delete this photo from Google Drive and the album?'
             : 'Permanently delete this photo from Google Drive and the album?';
@@ -74,7 +82,6 @@ export default function AlbumGallery() {
         // Optimistic UI: Immediately mark as deleting
         setDeletingPhotos(prev => new Set([...prev, photoId]));
 
-        const uploaderId = getUploaderId();
         const adminToken = getAdminToken();
 
         try {
@@ -83,7 +90,12 @@ export default function AlbumGallery() {
                 headers['Authorization'] = `Bearer ${adminToken}`;
             }
 
-            const res = await fetch(`/api/delete-photo?photoId=${photoId}&uploaderId=${uploaderId || ''}`, {
+            // Build URL with uploaderId only if it exists
+            const url = uploaderId
+                ? `/api/delete-photo?photoId=${photoId}&uploaderId=${uploaderId}`
+                : `/api/delete-photo?photoId=${photoId}`;
+
+            const res = await fetch(url, {
                 method: 'DELETE',
                 headers
             });

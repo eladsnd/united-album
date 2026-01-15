@@ -133,13 +133,28 @@ export class PhotoService {
     }
 
     // 2. Check permissions (unless admin)
-    if (!isAdmin && photo.uploaderId !== requesterId) {
-      throw new AppError(
-        'You can only delete your own photos',
-        403,
-        'FORBIDDEN'
-      );
+    if (!isAdmin) {
+      // If user has no uploaderId, they can't delete any photos
+      if (!requesterId) {
+        throw new AppError(
+          'Cannot delete photos without uploader ID. Please upload a photo first to establish your identity.',
+          403,
+          'NO_UPLOADER_ID'
+        );
+      }
+
+      // Check if this photo belongs to the requester
+      if (photo.uploaderId !== requesterId) {
+        throw new AppError(
+          'You can only delete your own photos',
+          403,
+          'FORBIDDEN'
+        );
+      }
     }
+
+    console.log(`[PhotoService] Deleting photo ${photoId} (admin: ${isAdmin}, requester: ${requesterId})`);
+
 
     // 3. Delete from Google Drive
     await this.driveService.deleteFile(photo.driveId);
