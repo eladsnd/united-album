@@ -10,14 +10,18 @@ export async function GET() {
 
         // For each face, find a representative photo with bounding box
         const faceThumbnails = faces.map(face => {
-            // Find a photo where this face is the main face
-            const photo = photos.find(p => p.mainFaceId === face.faceId);
+            // Find ANY photo containing this face (check both mainFaceId and faceIds array)
+            const photo = photos.find(p => {
+                const faceIds = p.faceIds || [p.mainFaceId || p.faceId];
+                return faceIds.includes(face.faceId);
+            });
 
             let faceUrl = null;
             if (photo) {
                 // Try to use cropped face if boxes are available
                 if (photo.faceBoxes && photo.faceBoxes.length > 0) {
-                    const faceIndex = photo.faceIds.indexOf(face.faceId);
+                    const faceIds = photo.faceIds || [photo.mainFaceId];
+                    const faceIndex = faceIds.indexOf(face.faceId);
                     if (faceIndex >= 0 && photo.faceBoxes[faceIndex]) {
                         const box = photo.faceBoxes[faceIndex];
                         faceUrl = `/api/face-crop/${photo.driveId}?x=${box.x}&y=${box.y}&w=${box.width}&h=${box.height}`;
