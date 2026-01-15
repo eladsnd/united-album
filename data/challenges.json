@@ -19,5 +19,12 @@
     "instruction": "ילדה קטנה",
     "image": "/challenges/pafu-pafu.jpg",
     "folderId": null
+  },
+  {
+    "id": "arigato-gozaimasu",
+    "title": "Arigato-gozaimasu",
+    "instruction": "/",
+    "image": "/challenges/arigato-gozaimasu.jpg",
+    "folderId": null
   }
 ]
