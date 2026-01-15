@@ -8,6 +8,7 @@ import { FaceRepository } from './repositories/face.repository.js';
 import { DriveService } from './services/drive.service.js';
 import { FaceService } from './services/face.service.js';
 import { PhotoService } from './services/photo.service.js';
+import { ImageCompressionService } from './services/image-compression.service.js';
 
 /**
  * Initialize the application services
@@ -20,6 +21,9 @@ export function bootstrapServices() {
 
   // Register DriveService
   container.register('DriveService', () => new DriveService(), true);
+
+  // Register ImageCompressionService
+  container.register('ImageCompressionService', () => new ImageCompressionService(), true);
 
   // Register FaceService with dependencies
   container.register(
@@ -39,7 +43,8 @@ export function bootstrapServices() {
       const driveService = c.get('DriveService');
       const photoRepository = c.get('PhotoRepository');
       const faceService = c.get('FaceService');
-      return new PhotoService(driveService, photoRepository, faceService);
+      const compressionService = c.get('ImageCompressionService');
+      return new PhotoService(driveService, photoRepository, faceService, compressionService);
     },
     true
   );

@@ -7,10 +7,11 @@ import { AppError } from '../errors/app-error.js';
  */
 @Injectable()
 export class PhotoService {
-  constructor(driveService, photoRepository, faceService) {
+  constructor(driveService, photoRepository, faceService, compressionService) {
     this.driveService = driveService;
     this.photoRepository = photoRepository;
     this.faceService = faceService;
+    this.compressionService = compressionService;
   }
 
   /**
@@ -26,14 +27,24 @@ export class PhotoService {
   async uploadPhoto(uploadDto) {
     const { file, fileName, folderId, poseId, uploaderId } = uploadDto;
 
-    // 1. Upload to Google Drive
+    // 1. Compress image to meet 5MB limit
+    const { buffer: compressedBuffer, metadata: compressionMetadata } =
+      await this.compressionService.compressImage(file, 'image/jpeg');
+
+    console.log(
+      `[PhotoService] Compressed ${fileName}: ` +
+      `${Math.round(compressionMetadata.originalSize / 1024)}KB → ${Math.round(compressionMetadata.finalSize / 1024)}KB ` +
+      `(${compressionMetadata.compressionRatio.toFixed(2)}x)`
+    );
+
+    // 2. Upload compressed image to Google Drive
     const driveFile = await this.driveService.uploadFile(
-      file,
+      compressedBuffer,
       fileName,
       folderId
     );
 
-    // 2. Create photo metadata
+    // 3. Create photo metadata
     // Note: Face detection happens AFTER upload in the new flow
     // The client uploads the image first, then downloads it back, detects faces,
     // and calls /api/update-faces with the face data and thumbnails
@@ -50,7 +61,7 @@ export class PhotoService {
       timestamp: new Date().toISOString(),
     };
 
-    // 3. Save photo metadata
+    // 4. Save photo metadata
     const savedPhoto = await this.photoRepository.save(photoMetadata);
 
     return savedPhoto;
