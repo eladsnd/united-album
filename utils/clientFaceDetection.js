@@ -246,19 +246,20 @@ async function matchFaceDescriptor(descriptor) {
 
         // Adaptive thresholds based on sample count
         // Lower thresholds = stricter matching (less false positives)
-        // Typical same-person distance: 0.2-0.3, different people: 0.4+
+        // Typical same-person distance: 0.2-0.4, different people: 0.5+
+        // Research shows 0.6 is standard threshold, 0.4-0.5 is more conservative
         let threshold;
         const sampleCount = bestMatch?.sampleCount || bestMatch?.descriptors?.length || 1;
 
-        if (sampleCount <= 2) {
-            // Very strict for few samples (avoid false positives)
-            threshold = 0.30;
-        } else if (sampleCount <= 4) {
-            // Strict threshold for moderate samples
-            threshold = 0.32;
+        if (sampleCount <= 1) {
+            // More lenient for single sample (first photo of person)
+            threshold = 0.45;
+        } else if (sampleCount <= 3) {
+            // Balanced threshold with few samples
+            threshold = 0.50;
         } else {
-            // Still strict even with many samples
-            threshold = 0.35;
+            // More confident matching with many samples
+            threshold = 0.55;
         }
 
         if (bestMatch && bestDistance < threshold) {
