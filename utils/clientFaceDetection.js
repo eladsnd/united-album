@@ -121,8 +121,58 @@ export async function detectFaceInBrowser(imageFile) {
         const boxes = results.map(r => r.box);
         const mainFaceId = faceIds[0]; // Largest face is the main face
 
+        // Create a canvas from the image for thumbnail extraction
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        // Extract face thumbnails from the original image canvas
+        const faceThumbnails = await Promise.all(
+            boxes.map(async (box, index) => {
+                try {
+                    // Add 20% padding around face
+                    const padding = Math.round(Math.max(box.width, box.height) * 0.2);
+                    const cropX = Math.max(0, box.x - padding);
+                    const cropY = Math.max(0, box.y - padding);
+                    const cropW = Math.min(box.width + padding * 2, canvas.width - cropX);
+                    const cropH = Math.min(box.height + padding * 2, canvas.height - cropY);
+
+                    // Create a temporary canvas for cropping
+                    const cropCanvas = document.createElement('canvas');
+                    cropCanvas.width = cropW;
+                    cropCanvas.height = cropH;
+                    const cropCtx = cropCanvas.getContext('2d');
+
+                    // Draw the cropped region
+                    cropCtx.drawImage(
+                        canvas,
+                        cropX, cropY, cropW, cropH,
+                        0, 0, cropW, cropH
+                    );
+
+                    // Convert to blob (JPEG, 90% quality)
+                    const blob = await new Promise(resolve => {
+                        cropCanvas.toBlob(resolve, 'image/jpeg', 0.9);
+                    });
+
+                    return {
+                        faceId: faceIds[index],
+                        blob,
+                        box
+                    };
+                } catch (error) {
+                    console.error(`[Client Face Detection] Failed to extract thumbnail for face ${index}:`, error);
+                    return null;
+                }
+            })
+        );
+
         console.log(`[Client Face Detection] Main face: ${mainFaceId}, All faces: ${faceIds.join(', ')}`);
-        return { descriptors, faceIds, mainFaceId, boxes };
+        console.log(`[Client Face Detection] Extracted ${faceThumbnails.filter(t => t).length} face thumbnails`);
+
+        return { descriptors, faceIds, mainFaceId, boxes, faceThumbnails: faceThumbnails.filter(t => t) };
 
     } catch (error) {
         console.error('[Client Face Detection] Error:', error);

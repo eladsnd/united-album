@@ -112,51 +112,74 @@ export default function UploadSection({ folderId, poseTitle }) {
         setRetryCount(0);
 
         try {
-            // Step 1: Detect face in browser (20% progress)
-            let faceIds = ['unknown'];
-            let mainFaceId = 'unknown';
-            let faceDescriptors = [];
-            let faceBoxes = [];
+            // NEW FLOW: Upload first, THEN detect faces from the uploaded image
+            // This ensures face coordinates match the Drive-stored version
 
-            if (modelsReady) {
-                setUploadProgress(10);
-                const result = await detectFaceInBrowser(file);
-                faceIds = result.faceIds;
-                mainFaceId = result.mainFaceId;
-                faceDescriptors = result.descriptors;
-                faceBoxes = result.boxes || [];
-                setUploadProgress(30);
-
-                // Face descriptors are now saved inside detectFaceInBrowser sequentially
-                // to avoid race conditions where all faces match to the same person
-                if (result.faceIds && result.faceIds[0] !== 'unknown') {
-                    toast.showSuccess(`Detected ${faceIds.length} face(s) successfully!`);
-                } else {
-                    toast.showWarning('No faces detected - photo will still be uploaded');
-                }
-            }
-            setUploadProgress(40);
-
-            // Step 2: Compress image (60% progress)
+            // Step 1: Compress and upload image (40% progress)
             setStatus('uploading');
+            toast.showInfo('Uploading photo...');
             const compressedFile = await compressImage(file);
-            setUploadProgress(60);
+            setUploadProgress(20);
 
-            // Step 3: Upload to server with retry (80-100% progress)
             const formData = new FormData();
             formData.append('file', compressedFile);
-            formData.append('mainFaceId', mainFaceId);
-            formData.append('faceIds', faceIds.join(','));
-            formData.append('faceBoxes', JSON.stringify(faceBoxes));
+            formData.append('detectFaces', modelsReady ? 'true' : 'false'); // Tell server whether to expect face detection
             if (folderId) formData.append('folderId', folderId);
             if (poseTitle) formData.append('poseId', poseTitle);
 
-            setUploadProgress(80);
-            const data = await uploadWithRetry(formData);
+            setUploadProgress(40);
+            const uploadData = await uploadWithRetry(formData);
+            const photoId = uploadData.photo.driveId;
+
+            toast.showSuccess('Photo uploaded! Detecting faces...');
+            setUploadProgress(50);
+
+            // Step 2: If face detection is enabled, detect faces from the uploaded image
+            if (modelsReady && photoId) {
+                setStatus('analyzing');
+
+                // Download the image from Drive to detect faces
+                const imageUrl = `/api/image/${photoId}`;
+                const imageResponse = await fetch(imageUrl);
+                const imageBlob = await imageResponse.blob();
+                const imageFile = new File([imageBlob], 'photo.jpg', { type: 'image/jpeg' });
+
+                setUploadProgress(60);
+
+                // Run face detection on the Drive version
+                const result = await detectFaceInBrowser(imageFile);
+
+                setUploadProgress(90);
+
+                if (result.faceIds && result.faceIds[0] !== 'unknown') {
+                    // Upload face thumbnails
+                    const thumbFormData = new FormData();
+                    thumbFormData.append('photoId', uploadData.photo.id);
+                    thumbFormData.append('driveId', photoId);
+                    thumbFormData.append('faceIds', result.faceIds.join(','));
+                    thumbFormData.append('mainFaceId', result.mainFaceId);
+                    thumbFormData.append('faceBoxes', JSON.stringify(result.boxes));
+
+                    // Upload face thumbnails
+                    result.faceThumbnails.forEach((thumbnail) => {
+                        thumbFormData.append(`faceThumbnail_${thumbnail.faceId}`, thumbnail.blob, `face_${thumbnail.faceId}.jpg`);
+                    });
+
+                    await fetch('/api/update-faces', {
+                        method: 'POST',
+                        body: thumbFormData
+                    });
+
+                    toast.showSuccess(`Detected ${result.faceIds.length} face(s) successfully!`);
+                } else {
+                    toast.showInfo('No faces detected in photo');
+                }
+            }
+
             setUploadProgress(100);
 
             setStatus('success');
-            setUploadedUrl(data.photo?.url || data.driveLink);
+            setUploadedUrl(uploadData.photo?.url || uploadData.driveLink);
             toast.showSuccess('Photo uploaded successfully! 🎉');
 
             // Trigger gallery refresh
