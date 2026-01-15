@@ -77,13 +77,13 @@ describe('Face Recognition Sequential Processing', () => {
     test('should assign unique IDs when processing 7 faces sequentially', async () => {
         // Simulate the sequential face processing logic from clientFaceDetection.js
         const mockDescriptors = [
-            Array(128).fill(0.1), // person_0
-            Array(128).fill(0.2), // person_1
-            Array(128).fill(0.3), // person_2
-            Array(128).fill(0.4), // person_3
-            Array(128).fill(0.5), // person_4
-            Array(128).fill(0.6), // person_5
-            Array(128).fill(0.7)  // person_6
+            Array(128).fill(0.1), // person_1
+            Array(128).fill(0.2), // person_2
+            Array(128).fill(0.3), // person_3
+            Array(128).fill(0.4), // person_4
+            Array(128).fill(0.5), // person_5
+            Array(128).fill(0.6), // person_6
+            Array(128).fill(0.7)  // person_7
         ];
 
         // Helper to calculate Euclidean distance
@@ -93,13 +93,13 @@ describe('Face Recognition Sequential Processing', () => {
             );
         }
 
-        // Simulate matchFaceDescriptor logic
+        // Simulate matchFaceDescriptor logic (with human-friendly numbering)
         async function matchFaceDescriptor(descriptor) {
             const response = await fetch('/api/faces');
             const knownFaces = await response.json();
 
             if (knownFaces.length === 0) {
-                return 'person_0';
+                return 'person_1'; // Human-friendly: start at 1
             }
 
             let bestMatch = null;
@@ -118,7 +118,13 @@ describe('Face Recognition Sequential Processing', () => {
                 return bestMatch.faceId;
             }
 
-            return `person_${knownFaces.length}`;
+            // Find max person number and add 1
+            const personNumbers = knownFaces
+                .map(f => f.faceId.match(/person_(\d+)/))
+                .filter(match => match)
+                .map(match => parseInt(match[1]));
+            const maxNumber = personNumbers.length > 0 ? Math.max(...personNumbers) : 0;
+            return `person_${maxNumber + 1}`;
         }
 
         // Process faces SEQUENTIALLY (like the fixed code)
@@ -136,26 +142,26 @@ describe('Face Recognition Sequential Processing', () => {
             faceIds.push(faceId);
         }
 
-        // Verify all 7 faces got unique IDs
+        // Verify all 7 faces got unique IDs (human-friendly: 1-7, not 0-6)
         expect(faceIds).toEqual([
-            'person_0',
             'person_1',
             'person_2',
             'person_3',
             'person_4',
             'person_5',
-            'person_6'
+            'person_6',
+            'person_7'
         ]);
 
         // Verify saves happened in correct order
         expect(saveCallOrder).toEqual([
-            'person_0',
             'person_1',
             'person_2',
             'person_3',
             'person_4',
             'person_5',
-            'person_6'
+            'person_6',
+            'person_7'
         ]);
 
         // Verify all 7 faces are in the database
@@ -173,7 +179,7 @@ describe('Face Recognition Sequential Processing', () => {
 
         console.log('✅ Sequential processing test passed!');
         console.log(`   - 7 faces detected`);
-        console.log(`   - 7 unique IDs assigned`);
+        console.log(`   - 7 unique IDs assigned (person_1 through person_7)`);
         console.log(`   - All descriptors saved in order`);
     });
 
@@ -195,7 +201,7 @@ describe('Face Recognition Sequential Processing', () => {
             const knownFaces = await response.json();
 
             if (knownFaces.length === 0) {
-                return 'person_0';
+                return 'person_1'; // Human-friendly
             }
 
             let bestMatch = null;
@@ -214,15 +220,20 @@ describe('Face Recognition Sequential Processing', () => {
                 return bestMatch.faceId;
             }
 
-            return `person_${knownFaces.length}`;
+            const personNumbers = knownFaces
+                .map(f => f.faceId.match(/person_(\d+)/))
+                .filter(match => match)
+                .map(match => parseInt(match[1]));
+            const maxNumber = personNumbers.length > 0 ? Math.max(...personNumbers) : 0;
+            return `person_${maxNumber + 1}`;
         }
 
         // Process in PARALLEL (the bug)
         const matchPromises = mockDescriptors.map(desc => matchFaceDescriptor(desc));
         const faceIds = await Promise.all(matchPromises);
 
-        // ALL faces will get person_0 because they all read from empty DB
-        expect(faceIds).toEqual(['person_0', 'person_0', 'person_0']);
+        // ALL faces will get person_1 because they all read from empty DB
+        expect(faceIds).toEqual(['person_1', 'person_1', 'person_1']);
 
         // Save after matching (too late!)
         await Promise.all(
@@ -238,14 +249,14 @@ describe('Face Recognition Sequential Processing', () => {
             )
         );
 
-        // All 3 get saved to person_0 (demonstrating the bug)
+        // All 3 get saved to person_1 (demonstrating the bug)
         expect(knownFaces).toHaveLength(1);
-        expect(knownFaces[0].faceId).toBe('person_0');
+        expect(knownFaces[0].faceId).toBe('person_1');
         expect(knownFaces[0].sampleCount).toBe(3); // 3 samples for same person!
 
         console.log('✅ Parallel processing test passed (correctly demonstrates bug)');
         console.log(`   - 3 different faces processed`);
-        console.log(`   - ALL assigned to person_0 (BUG)`);
+        console.log(`   - ALL assigned to person_1 (BUG - race condition)`);
         console.log(`   - This is why we need sequential processing!`);
     });
 });
