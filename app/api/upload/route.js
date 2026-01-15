@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { uploadToDrive } from '../../../lib/googleDrive';
+import { uploadToDrive, findOrCreateFolder } from '../../../lib/googleDrive';
 import { savePhoto } from '../../../lib/photoStorage';
 import { applyRateLimit } from '../../../lib/rateLimit';
+import { getFaceById, saveFaceDescriptor } from '../../../lib/faceStorage';
 
 export async function POST(request) {
     // Apply rate limiting (10 uploads per minute per IP)
@@ -18,6 +19,15 @@ export async function POST(request) {
         const mainFaceId = formData.get('mainFaceId') || 'unknown';
         const faceIdsStr = formData.get('faceIds') || 'unknown';
         const faceBoxesStr = formData.get('faceBoxes') || '[]';
+
+        // Extract face thumbnail blobs
+        const faceThumbnailFiles = [];
+        for (const [key, value] of formData.entries()) {
+            if (key.startsWith('faceThumbnail_')) {
+                const faceId = key.replace('faceThumbnail_', '');
+                faceThumbnailFiles.push({ faceId, file: value });
+            }
+        }
 
         if (!file) {
             console.error('[Upload API] No file found in request');
@@ -46,6 +56,44 @@ export async function POST(request) {
             console.log(`[Upload API] Uploading to Google Drive folder: ${folderId}`);
             driveData = await uploadToDrive(buffer, file.name, folderId);
             console.log(`[Upload API] Drive upload successful. ID: ${driveData.id}`);
+
+            // Upload face thumbnails to Drive in a 'faces' subfolder
+            console.log(`[Upload API] Uploading ${faceThumbnailFiles.length} face thumbnails...`);
+
+            // Find or create 'faces' subfolder
+            const facesFolderId = await findOrCreateFolder('faces', folderId);
+
+            const thumbnailUploads = await Promise.all(
+                faceThumbnailFiles.map(async ({ faceId, file: thumbFile }) => {
+                    try {
+                        const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
+                        const thumbData = await uploadToDrive(thumbBuffer, `${faceId}.jpg`, facesFolderId);
+                        console.log(`[Upload API] Thumbnail uploaded for ${faceId}: ${thumbData.id}`);
+                        return { faceId, thumbnailDriveId: thumbData.id };
+                    } catch (err) {
+                        console.error(`[Upload API] Failed to upload thumbnail for ${faceId}:`, err);
+                        return null;
+                    }
+                })
+            );
+
+            // Filter out failed uploads and update face storage with thumbnail IDs
+            const successfulThumbnails = thumbnailUploads.filter(t => t);
+            console.log(`[Upload API] Successfully uploaded ${successfulThumbnails.length} thumbnails`);
+
+            // Update face storage with thumbnail Drive IDs
+            for (const { faceId, thumbnailDriveId } of successfulThumbnails) {
+                const existingFace = getFaceById(faceId);
+                if (existingFace && !existingFace.thumbnailDriveId) {
+                    // Update existing face with thumbnail ID
+                    saveFaceDescriptor(faceId, existingFace.descriptor, {
+                        ...existingFace.metadata,
+                        thumbnailDriveId
+                    });
+                    console.log(`[Upload API] Updated ${faceId} with thumbnail ID: ${thumbnailDriveId}`);
+                }
+            }
+
         } catch (driveErr) {
             console.error('[Upload API] Drive upload failed:', driveErr.message);
             return NextResponse.json({

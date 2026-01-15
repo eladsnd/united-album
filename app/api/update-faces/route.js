@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { uploadToDrive } from '../../../lib/googleDrive';
+import { uploadToDrive, findOrCreateFolder } from '../../../lib/googleDrive';
 import { updatePhoto } from '../../../lib/photoStorage';
 import { getFaceById, saveFaceDescriptor } from '../../../lib/faceStorage';
 
@@ -41,16 +41,20 @@ export async function POST(request) {
 
         console.log(`[Update Faces API] Found ${faceThumbnailFiles.length} face thumbnails to upload`);
 
-        // Upload face thumbnails to Google Drive
+        // Upload face thumbnails to Google Drive in 'faces' subfolder
         const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+
+        // Find or create 'faces' subfolder
+        const facesFolderId = await findOrCreateFolder('faces', folderId);
+
         const thumbnailUploads = await Promise.all(
             faceThumbnailFiles.map(async ({ faceId, file: thumbFile }) => {
                 try {
                     const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
                     const thumbData = await uploadToDrive(
                         thumbBuffer,
-                        `face_${faceId}_thumb.jpg`,
-                        folderId
+                        `${faceId}.jpg`,
+                        facesFolderId
                     );
                     console.log(`[Update Faces API] Uploaded thumbnail for ${faceId}: ${thumbData.id}`);
                     return { faceId, thumbnailDriveId: thumbData.id };
