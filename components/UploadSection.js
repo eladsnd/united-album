@@ -27,63 +27,46 @@ export default function UploadSection({ folderId, poseTitle }) {
 
     // Load face detection models on component mount
     useEffect(() => {
-        loadFaceModels().then(loaded => {
-            setModelsReady(loaded);
-            if (loaded) {
-                console.log('[Upload] Face detection models ready');
-            }
-        });
+        loadFaceModels()
+            .then(loaded => {
+                setModelsReady(loaded);
+                if (loaded) {
+                    console.log('[Upload] Face detection models ready');
+                } else {
+                    console.warn('[Upload] Face detection models failed to load - uploads will work without face detection');
+                }
+            })
+            .catch(error => {
+                console.error('[Upload] Error loading face models:', error);
+                setModelsReady(false); // Ensure we continue without face detection
+            });
     }, []);
 
     const compressImage = (file) => {
-        // ... (keep compressImage as is)
-        if (typeof window === 'undefined' || !window.HTMLCanvasElement || process.env.NODE_ENV === 'test') {
-            return Promise.resolve(file);
-        }
-
-        return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-                const img = new window.Image();
-                img.src = event.target.result;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const MAX_WIDTH = 1200;
-                    const scaleSize = MAX_WIDTH / img.width;
-
-                    if (img.width > MAX_WIDTH) {
-                        canvas.width = MAX_WIDTH;
-                        canvas.height = img.height * scaleSize;
-                    } else {
-                        canvas.width = img.width;
-                        canvas.height = img.height;
-                    }
-
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-
-                    canvas.toBlob((blob) => {
-                        resolve(new File([blob], file.name, {
-                            type: 'image/jpeg',
-                            lastModified: Date.now(),
-                        }));
-                    }, 'image/jpeg', 1.0); // 100% quality - maximum image fidelity
-                };
-            };
-        });
+        // Skip client-side compression - let the server handle it
+        // Server has ImageCompressionService that intelligently compresses to meet 5MB limit
+        // This avoids double-compression and ensures consistent quality
+        return Promise.resolve(file);
     };
 
     // Upload with exponential backoff retry
     const uploadWithRetry = async (formData, attempt = 0) => {
         const MAX_RETRIES = 3;
         const BACKOFF_MS = 1000; // 1 second base
+        const UPLOAD_TIMEOUT_MS = 60000; // 60 second timeout for large files
 
         try {
+            // Create abort controller for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
+
             const response = await fetch('/api/upload', {
                 method: 'POST',
                 body: formData,
+                signal: controller.signal,
             });
+
+            clearTimeout(timeoutId);
 
             const contentType = response.headers.get("content-type");
             let data;
@@ -96,19 +79,30 @@ export default function UploadSection({ folderId, poseTitle }) {
             }
 
             if (!response.ok) {
-                throw new Error(data.error || 'Upload failed');
+                throw new Error(data.error || data.message || 'Upload failed');
             }
 
             return data;
         } catch (error) {
+            // Better error messages for common issues
+            let errorMessage = error.message;
+            if (error.name === 'AbortError') {
+                errorMessage = 'Upload timed out. Please check your connection and try again.';
+            } else if (error.message.includes('Failed to fetch')) {
+                errorMessage = 'Network error. Please check your connection.';
+            }
+
             if (attempt < MAX_RETRIES) {
                 const delay = BACKOFF_MS * Math.pow(2, attempt); // Exponential backoff
-                toast.showWarning(`Upload failed. Retrying in ${delay/1000}s... (Attempt ${attempt + 1}/${MAX_RETRIES})`);
+                toast.showWarning(`${errorMessage} Retrying in ${delay/1000}s... (Attempt ${attempt + 1}/${MAX_RETRIES})`);
                 setRetryCount(attempt + 1);
 
                 await new Promise(resolve => setTimeout(resolve, delay));
                 return uploadWithRetry(formData, attempt + 1);
             }
+
+            // Enhance error message for final failure
+            error.message = errorMessage;
             throw error;
         }
     };
@@ -147,20 +141,26 @@ export default function UploadSection({ folderId, poseTitle }) {
 
             // Step 2: If face detection is enabled, detect faces from the uploaded image
             if (modelsReady && photoId) {
-                setStatus('analyzing');
+                try {
+                    setStatus('analyzing');
 
-                // Download the image from Drive to detect faces
-                const imageUrl = `/api/image/${photoId}`;
-                const imageResponse = await fetch(imageUrl);
-                const imageBlob = await imageResponse.blob();
-                const imageFile = new File([imageBlob], 'photo.jpg', { type: 'image/jpeg' });
+                    // Download the image from Drive to detect faces
+                    const imageUrl = `/api/image/${photoId}`;
+                    const imageResponse = await fetch(imageUrl);
 
-                setUploadProgress(60);
+                    if (!imageResponse.ok) {
+                        throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+                    }
 
-                // Run face detection on the Drive version
-                const result = await detectFaceInBrowser(imageFile);
+                    const imageBlob = await imageResponse.blob();
+                    const imageFile = new File([imageBlob], 'photo.jpg', { type: 'image/jpeg' });
 
-                setUploadProgress(90);
+                    setUploadProgress(60);
+
+                    // Run face detection on the Drive version
+                    const result = await detectFaceInBrowser(imageFile);
+
+                    setUploadProgress(90);
 
                 if (result.faceIds && result.faceIds[0] !== 'unknown') {
                     // Fetch existing faces to check which ones already have thumbnails
@@ -205,6 +205,11 @@ export default function UploadSection({ folderId, poseTitle }) {
                     }
                 } else {
                     toast.showSuccess('Photo uploaded! No faces detected 🎉');
+                }
+                } catch (faceError) {
+                    // Face detection failed, but photo was uploaded successfully
+                    console.warn('[Upload] Face detection failed:', faceError);
+                    toast.showWarning('Photo uploaded! Face detection unavailable - photo saved without face tagging.');
                 }
             } else {
                 // No face detection - just show success
