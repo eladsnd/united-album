@@ -2,12 +2,16 @@
 import { useState, useEffect } from 'react';
 import { Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { detectFaceInBrowser, loadFaceModels } from '../utils/clientFaceDetection';
+import { useToast } from './ToastContainer';
 
 export default function UploadSection({ folderId, poseTitle }) {
     const [status, setStatus] = useState('idle'); // idle, analyzing, uploading, success, error
     const [uploadedUrl, setUploadedUrl] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
     const [modelsReady, setModelsReady] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
+    const [retryCount, setRetryCount] = useState(0);
+    const toast = useToast();
 
     // Load face detection models on component mount
     useEffect(() => {
@@ -58,6 +62,45 @@ export default function UploadSection({ folderId, poseTitle }) {
         });
     };
 
+    // Upload with exponential backoff retry
+    const uploadWithRetry = async (formData, attempt = 0) => {
+        const MAX_RETRIES = 3;
+        const BACKOFF_MS = 1000; // 1 second base
+
+        try {
+            const response = await fetch('/api/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const contentType = response.headers.get("content-type");
+            let data;
+            if (contentType && contentType.indexOf("application/json") !== -1) {
+                data = await response.json();
+            } else {
+                const text = await response.text();
+                console.error('Non-JSON response received:', text);
+                throw new Error('Server returned an unexpected response format.');
+            }
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Upload failed');
+            }
+
+            return data;
+        } catch (error) {
+            if (attempt < MAX_RETRIES) {
+                const delay = BACKOFF_MS * Math.pow(2, attempt); // Exponential backoff
+                toast.showWarning(`Upload failed. Retrying in ${delay/1000}s... (Attempt ${attempt + 1}/${MAX_RETRIES})`);
+                setRetryCount(attempt + 1);
+
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return uploadWithRetry(formData, attempt + 1);
+            }
+            throw error;
+        }
+    };
+
     const handleUpload = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -65,20 +108,24 @@ export default function UploadSection({ folderId, poseTitle }) {
         setStatus('analyzing');
         setUploadedUrl(null);
         setErrorMessage('');
+        setUploadProgress(0);
+        setRetryCount(0);
 
         try {
-            // Step 1: Detect face in browser
+            // Step 1: Detect face in browser (20% progress)
             let faceIds = ['unknown'];
             let mainFaceId = 'unknown';
             let faceDescriptors = [];
             let faceBoxes = [];
 
             if (modelsReady) {
+                setUploadProgress(10);
                 const result = await detectFaceInBrowser(file);
                 faceIds = result.faceIds;
                 mainFaceId = result.mainFaceId;
                 faceDescriptors = result.descriptors;
                 faceBoxes = result.boxes || [];
+                setUploadProgress(30);
 
                 // Save face descriptors ONLY if faces were actually detected
                 if (result.descriptors && result.descriptors.length > 0 && result.faceIds[0] !== 'unknown') {
@@ -90,56 +137,49 @@ export default function UploadSection({ folderId, poseTitle }) {
                                 body: JSON.stringify({
                                     faceId,
                                     descriptor: result.descriptors[index],
-                                    box: result.boxes[index] // Save bounding box
+                                    box: result.boxes[index]
                                 })
                             })
                         )
                     );
+                    toast.showSuccess(`Detected ${faceIds.length} face(s) successfully!`);
+                } else {
+                    toast.showWarning('No faces detected - photo will still be uploaded');
                 }
             }
+            setUploadProgress(40);
 
-            // Step 2: Compress image
+            // Step 2: Compress image (60% progress)
             setStatus('uploading');
             const compressedFile = await compressImage(file);
+            setUploadProgress(60);
 
-            // Step 3: Upload to server
+            // Step 3: Upload to server with retry (80-100% progress)
             const formData = new FormData();
             formData.append('file', compressedFile);
-            formData.append('mainFaceId', mainFaceId); // Primary face for grouping
-            formData.append('faceIds', faceIds.join(',')); // All detected faces
-            formData.append('faceBoxes', JSON.stringify(faceBoxes)); // Face bounding boxes
+            formData.append('mainFaceId', mainFaceId);
+            formData.append('faceIds', faceIds.join(','));
+            formData.append('faceBoxes', JSON.stringify(faceBoxes));
             if (folderId) formData.append('folderId', folderId);
             if (poseTitle) formData.append('poseId', poseTitle);
 
-            const response = await fetch('/api/upload', {
-                method: 'POST',
-                body: formData,
-            });
+            setUploadProgress(80);
+            const data = await uploadWithRetry(formData);
+            setUploadProgress(100);
 
-            // Handle potential non-JSON responses (like 500 HTML errors)
-            const contentType = response.headers.get("content-type");
-            let data;
-            if (contentType && contentType.indexOf("application/json") !== -1) {
-                data = await response.json();
-            } else {
-                const text = await response.text();
-                console.error('Non-JSON response received:', text);
-                throw new Error('Server returned an unexpected response format.');
-            }
+            setStatus('success');
+            setUploadedUrl(data.photo?.url || data.driveLink);
+            toast.showSuccess('Photo uploaded successfully! 🎉');
 
-            if (response.ok) {
-                setStatus('success');
-                setUploadedUrl(data.driveLink);
-                // Trigger gallery refresh
-                window.dispatchEvent(new Event('photoUploaded'));
-            } else {
-                setErrorMessage(data.error || 'Upload failed. Please try again.');
-                setStatus('error');
-            }
+            // Trigger gallery refresh
+            window.dispatchEvent(new Event('photoUploaded'));
+
         } catch (error) {
             console.error('Upload failed:', error);
-            setErrorMessage(error.message || 'Network error. Please check your connection.');
+            const errorMsg = error.message || 'Network error. Please check your connection.';
+            setErrorMessage(errorMsg);
             setStatus('error');
+            toast.showError(`Upload failed: ${errorMsg}`);
         }
     };
 
@@ -164,7 +204,11 @@ export default function UploadSection({ folderId, poseTitle }) {
                 <div className="status-box glass-effect">
                     <Loader2 className="animate-spin" size={32} />
                     <span className="status-title">Analyzing Face...</span>
-                    <span className="status-desc">Detecting and matching face</span>
+                    <span className="status-desc">Detecting and matching faces</span>
+                    <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                    <span className="progress-text">{uploadProgress}%</span>
                 </div>
             )}
 
@@ -172,7 +216,13 @@ export default function UploadSection({ folderId, poseTitle }) {
                 <div className="status-box glass-effect">
                     <Loader2 className="animate-spin" size={32} />
                     <span className="status-title">Processing & Uploading...</span>
-                    <span className="status-desc">Optimizing image for the album</span>
+                    <span className="status-desc">
+                        {retryCount > 0 ? `Retry attempt ${retryCount}/3` : 'Optimizing image for the album'}
+                    </span>
+                    <div className="progress-bar">
+                        <div className="progress-fill" style={{ width: `${uploadProgress}%` }}></div>
+                    </div>
+                    <span className="progress-text">{uploadProgress}%</span>
                 </div>
             )}
 
