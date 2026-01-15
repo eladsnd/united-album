@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getPhotos, deletePhoto } from '../../../lib/photoStorage';
 import { deleteFromDrive } from '../../../lib/googleDrive';
 import { isAdminAuthenticated } from '../../../lib/adminAuth';
+import { deleteFace, getFaceById } from '../../../lib/faceStorage';
 
 /**
  * DELETE /api/delete-photo?photoId=123&uploaderId=xxx
@@ -65,10 +66,51 @@ export async function DELETE(request) {
 
         console.log(`[Delete Photo API] Successfully deleted photo ${photoId} from both Drive and album`);
 
+        // Clean up orphaned face thumbnails
+        // Check if any faces from this photo no longer appear in ANY other photo
+        const facesInDeletedPhoto = photo.faceIds || [photo.mainFaceId || photo.faceId].filter(Boolean);
+        const remainingPhotos = getPhotos(); // Get updated list after deletion
+        const orphanedFaces = [];
+
+        for (const faceId of facesInDeletedPhoto) {
+            if (!faceId || faceId === 'unknown') continue;
+
+            // Count how many photos still contain this face
+            const photosWithThisFace = remainingPhotos.filter(p => {
+                const photoFaces = p.faceIds || [p.mainFaceId || p.faceId].filter(Boolean);
+                return photoFaces.includes(faceId);
+            });
+
+            if (photosWithThisFace.length === 0) {
+                // This face is orphaned - no photos contain it anymore
+                console.log(`[Delete Photo API] Face ${faceId} is orphaned (no photos remaining)`);
+
+                const faceData = getFaceById(faceId);
+                if (faceData && faceData.thumbnailDriveId) {
+                    try {
+                        // Delete thumbnail from Google Drive
+                        await deleteFromDrive(faceData.thumbnailDriveId);
+                        console.log(`[Delete Photo API] Deleted orphaned thumbnail from Drive: ${faceData.thumbnailDriveId}`);
+                    } catch (thumbError) {
+                        console.error(`[Delete Photo API] Failed to delete thumbnail from Drive:`, thumbError);
+                    }
+                }
+
+                // Delete face from faces.json
+                deleteFace(faceId);
+                orphanedFaces.push(faceId);
+            }
+        }
+
+        const message = orphanedFaces.length > 0
+            ? `Photo permanently deleted. ${orphanedFaces.length} orphaned face thumbnail(s) also removed.`
+            : 'Photo permanently deleted from Drive and album.';
+
         return NextResponse.json({
             success: true,
             deletedPhoto: photo,
-            message: 'Photo permanently deleted from Drive and album.'
+            orphanedFaces,
+            message
         });
 
     } catch (error) {
