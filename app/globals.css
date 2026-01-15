@@ -430,7 +430,20 @@ h3 {
   background: #d32f2f;
   color: white;
   transform: scale(1.1);
-  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.4)
+  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.4);
+}
+
+.delete-photo-btn.admin-delete {
+  background: rgba(212, 175, 55, 0.15);
+  border: 2px solid var(--primary);
+  color: var(--primary);
+}
+
+.delete-photo-btn.admin-delete:hover {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.5);
 }
 
 .photo-card:hover {

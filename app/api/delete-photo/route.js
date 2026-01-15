@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { getPhotos, deletePhoto } from '../../../lib/photoStorage';
 import { deleteFromDrive } from '../../../lib/googleDrive';
+import { isAdminAuthenticated } from '../../../lib/adminAuth';
 
 /**
  * DELETE /api/delete-photo?photoId=123&uploaderId=xxx
  * Delete a photo from the album AND Google Drive
  *
- * Security: Only the uploader can delete their own photos
+ * Security: Only the uploader can delete their own photos, OR admin can delete any photo
  */
 export async function DELETE(request) {
     try {
@@ -18,11 +19,10 @@ export async function DELETE(request) {
             return NextResponse.json({ error: 'photoId is required' }, { status: 400 });
         }
 
-        if (!uploaderId) {
-            return NextResponse.json({ error: 'uploaderId is required' }, { status: 400 });
-        }
+        // Check if user is admin
+        const isAdmin = isAdminAuthenticated(request);
 
-        console.log(`[Delete Photo API] Delete request for photo ${photoId} by uploader ${uploaderId}`);
+        console.log(`[Delete Photo API] Delete request for photo ${photoId} by ${isAdmin ? 'ADMIN' : `uploader ${uploaderId}`}`);
 
         // Find the photo first
         const photos = getPhotos();
@@ -33,9 +33,11 @@ export async function DELETE(request) {
             return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
         }
 
-        // Check if the uploader ID matches
-        if (photo.uploaderId !== uploaderId) {
-            console.error(`[Delete Photo API] Permission denied. Photo uploader: ${photo.uploaderId}, Requester: ${uploaderId}`);
+        // Permission check: Admin can delete any photo, regular user can only delete their own
+        const canDelete = isAdmin || (uploaderId && photo.uploaderId === uploaderId);
+
+        if (!canDelete) {
+            console.error(`[Delete Photo API] Permission denied. Photo uploader: ${photo.uploaderId}, Requester: ${uploaderId}, IsAdmin: ${isAdmin}`);
             return NextResponse.json({
                 error: 'You can only delete photos you uploaded'
             }, { status: 403 });

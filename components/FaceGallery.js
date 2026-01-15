@@ -34,20 +34,37 @@ export default function AlbumGallery() {
         return localStorage.getItem('uploaderId');
     };
 
+    const getAdminToken = () => {
+        if (typeof window === 'undefined') return null;
+        return sessionStorage.getItem('admin_token');
+    };
+
+    const isAdmin = () => {
+        return !!getAdminToken();
+    };
+
     const handleDeletePhoto = async (photoId) => {
-        if (!confirm('Permanently delete this photo from Google Drive and the album?')) {
+        const adminMode = isAdmin();
+        const confirmMsg = adminMode
+            ? 'ADMIN: Permanently delete this photo from Google Drive and the album?'
+            : 'Permanently delete this photo from Google Drive and the album?';
+
+        if (!confirm(confirmMsg)) {
             return;
         }
 
         const uploaderId = getUploaderId();
-        if (!uploaderId) {
-            alert('Cannot delete: No uploader ID found');
-            return;
-        }
+        const adminToken = getAdminToken();
 
         try {
-            const res = await fetch(`/api/delete-photo?photoId=${photoId}&uploaderId=${uploaderId}`, {
-                method: 'DELETE'
+            const headers = {};
+            if (adminToken) {
+                headers['Authorization'] = `Bearer ${adminToken}`;
+            }
+
+            const res = await fetch(`/api/delete-photo?photoId=${photoId}&uploaderId=${uploaderId || ''}`, {
+                method: 'DELETE',
+                headers
             });
 
             if (res.ok) {
@@ -191,16 +208,18 @@ export default function AlbumGallery() {
                 <div className="gallery-grid">
                     {filteredPhotos.map(photo => {
                         const uploaderId = getUploaderId();
-                        const canDelete = uploaderId && photo.uploaderId === uploaderId;
+                        const adminMode = isAdmin();
+                        const isOwner = uploaderId && photo.uploaderId === uploaderId;
+                        const canDelete = adminMode || isOwner;
 
                         return (
                         <div key={photo.id} className="photo-card">
                             {canDelete && (
                                 <button
-                                    className="delete-photo-btn"
+                                    className={`delete-photo-btn ${adminMode ? 'admin-delete' : ''}`}
                                     onClick={() => handleDeletePhoto(photo.id)}
-                                    aria-label="Delete photo"
-                                    title="Delete your photo"
+                                    aria-label={adminMode ? "Admin: Delete any photo" : "Delete your photo"}
+                                    title={adminMode ? "Admin: Delete any photo" : "Delete your photo"}
                                 >
                                     ✕
                                 </button>
