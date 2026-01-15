@@ -421,6 +421,22 @@ h3 {
   aspect-ratio: 1/1;
 }
 
+.photo-card.deleting {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.delete-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  color: white;
+}
+
 .delete-photo-btn {
   position: absolute;
   top: 8px;

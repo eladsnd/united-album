@@ -27,6 +27,7 @@ export default function AlbumGallery() {
     const [imageErrors, setImageErrors] = useState({});
     const [likedPhotos, setLikedPhotos] = useState(new Set());
     const [downloading, setDownloading] = useState(false);
+    const [deletingPhotos, setDeletingPhotos] = useState(new Set()); // Track photos being deleted
 
     const fetchPhotos = async () => {
         try {
@@ -70,6 +71,9 @@ export default function AlbumGallery() {
             return;
         }
 
+        // Optimistic UI: Immediately mark as deleting
+        setDeletingPhotos(prev => new Set([...prev, photoId]));
+
         const uploaderId = getUploaderId();
         const adminToken = getAdminToken();
 
@@ -86,13 +90,29 @@ export default function AlbumGallery() {
 
             if (res.ok) {
                 console.log('[FaceGallery] Photo deleted successfully');
+                // Remove from deleting set and refresh
+                setDeletingPhotos(prev => {
+                    const next = new Set(prev);
+                    next.delete(photoId);
+                    return next;
+                });
                 fetchPhotos(); // Refresh gallery
             } else {
                 const error = await res.json();
+                setDeletingPhotos(prev => {
+                    const next = new Set(prev);
+                    next.delete(photoId);
+                    return next;
+                });
                 alert('Failed to delete photo: ' + error.error);
             }
         } catch (err) {
             console.error('[FaceGallery] Delete failed:', err);
+            setDeletingPhotos(prev => {
+                const next = new Set(prev);
+                next.delete(photoId);
+                return next;
+            });
             alert('Failed to delete photo');
         }
     };
@@ -309,10 +329,16 @@ export default function AlbumGallery() {
                         const adminMode = isAdmin();
                         const isOwner = uploaderId && photo.uploaderId === uploaderId;
                         const canDelete = adminMode || isOwner;
+                        const isDeleting = deletingPhotos.has(photo.id);
 
                         return (
-                        <div key={photo.id} className="photo-card">
-                            {canDelete && (
+                        <div key={photo.id} className={`photo-card ${isDeleting ? 'deleting' : ''}`}>
+                            {isDeleting && (
+                                <div className="delete-overlay">
+                                    <Loader2 className="animate-spin" size={32} />
+                                </div>
+                            )}
+                            {canDelete && !isDeleting && (
                                 <button
                                     className={`delete-photo-btn ${adminMode ? 'admin-delete' : ''}`}
                                     onClick={() => handleDeletePhoto(photo.id)}
