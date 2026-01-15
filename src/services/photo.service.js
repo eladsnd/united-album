@@ -16,30 +16,37 @@ export class PhotoService {
   /**
    * Upload a photo with face detection
    * @param {Object} uploadDto - Upload data transfer object
-   * @param {File} uploadDto.file - Image file to upload
+   * @param {Buffer} uploadDto.file - Image file buffer to upload
+   * @param {string} uploadDto.fileName - Original file name
+   * @param {string} uploadDto.folderId - Google Drive folder ID
    * @param {string} uploadDto.poseId - Associated pose challenge ID
    * @param {string} uploadDto.uploaderId - User session ID
    * @returns {Promise<Object>} Uploaded photo metadata
    */
   async uploadPhoto(uploadDto) {
-    const { file, poseId, uploaderId } = uploadDto;
+    const { file, fileName, folderId, poseId, uploaderId } = uploadDto;
 
     // 1. Upload to Google Drive
     const driveFile = await this.driveService.uploadFile(
       file,
-      file.name,
-      process.env.GOOGLE_DRIVE_FOLDER_ID
+      fileName,
+      folderId
     );
 
     // 2. Create photo metadata
+    // Note: Face detection happens AFTER upload in the new flow
+    // The client uploads the image first, then downloads it back, detects faces,
+    // and calls /api/update-faces with the face data and thumbnails
     const photoMetadata = {
+      id: Date.now(), // Generate ID
+      name: fileName,
       driveId: driveFile.id,
-      url: driveFile.webViewLink,
+      url: `/api/image/${driveFile.id}`, // Local proxy URL
+      mainFaceId: 'unknown', // Will be updated by /api/update-faces
+      faceIds: [], // Will be updated by /api/update-faces
+      faceBoxes: [], // Will be updated by /api/update-faces
       poseId: poseId || 'unknown',
-      uploaderId,
-      mainFaceId: 'unknown',
-      faceIds: [],
-      faceBoxes: [],
+      uploaderId: uploaderId || null,
       timestamp: new Date().toISOString(),
     };
 
