@@ -139,7 +139,18 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                 fetchPoses();
                 closeForm();
             } else {
-                setFormError(data.error || 'Failed to save pose');
+                // Provide specific error messages
+                let errorMsg = data.error || 'Failed to save pose';
+                if (res.status === 401) {
+                    errorMsg = 'Your admin session has expired. Please refresh and log in again.';
+                } else if (res.status === 409) {
+                    errorMsg = `A pose with this title already exists. Please choose a different title.`;
+                } else if (errorMsg.includes('file type')) {
+                    errorMsg = 'Only PNG and JPEG images are allowed.';
+                } else if (errorMsg.includes('size')) {
+                    errorMsg = 'Image file must be smaller than 5MB.';
+                }
+                setFormError(errorMsg);
             }
         } catch (err) {
             console.error('[AdminPoseManager] Error saving pose:', err);

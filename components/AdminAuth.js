@@ -66,6 +66,11 @@ export default function AdminAuth({ onAuthSuccess }) {
                     {error && (
                         <div className="error-message">
                             {error}
+                            {error.includes('not configured') && (
+                                <p style={{ marginTop: '0.5rem', fontSize: '0.85rem' }}>
+                                    Please set the ADMIN_PASSWORD environment variable in .env.local
+                                </p>
+                            )}
                         </div>
                     )}
 

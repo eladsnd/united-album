@@ -34,3 +34,5 @@ next-env.d.ts
 
 # project specific
 /data/photos.json
+/data/*.backup.*
+.idea/

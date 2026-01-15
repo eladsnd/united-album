@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import challengesData from '../data/challenges.json';
 
 export default function AlbumGallery() {
     const [photos, setPhotos] = useState([]);
@@ -110,15 +111,21 @@ export default function AlbumGallery() {
                     <span className="filter-label">Filter by Pose</span>
                     <div className="filter-chips">
                         <button className={`chip ${poseFilter === 'all' ? 'active' : ''}`} onClick={() => setPoseFilter('all')}>All Poses</button>
-                        {uniquePoses.map(poseId => (
-                            <button
-                                key={poseId}
-                                className={`chip ${poseFilter === poseId ? 'active' : ''}`}
-                                onClick={() => setPoseFilter(poseId)}
-                            >
-                                {poseId}
-                            </button>
-                        ))}
+                        {uniquePoses.map(poseId => {
+                            // Find the pose title from challenges.json
+                            const challenge = challengesData.find(c => c.id === poseId);
+                            const displayName = challenge ? challenge.title : poseId;
+
+                            return (
+                                <button
+                                    key={poseId}
+                                    className={`chip ${poseFilter === poseId ? 'active' : ''}`}
+                                    onClick={() => setPoseFilter(poseId)}
+                                >
+                                    {displayName}
+                                </button>
+                            );
+                        })}
                     </div>
                 </div>
 

@@ -1,5 +1,6 @@
 "use client";
-import { Camera, Image, Smartphone, User } from 'lucide-react';
+import { Camera, Image, Smartphone, User, Settings } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Sidebar({ activeSection, setActiveSection }) {
     const menuItems = [
@@ -33,6 +34,10 @@ export default function Sidebar({ activeSection, setActiveSection }) {
                     <User size={16} />
                     <span>United Wedding 2026</span>
                 </div>
+                <Link href="/admin" className="admin-link">
+                    <Settings size={14} />
+                    <span>Admin</span>
+                </Link>
             </div>
         </aside>
     );
