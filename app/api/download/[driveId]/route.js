@@ -29,11 +29,15 @@ export async function GET(request, { params }) {
 
         const stream = await getFileStream(driveId);
 
-        // Convert Node stream to Web stream for Next.js compatibility
+        // Convert Node stream to buffer
         const chunks = [];
-        for await (const chunk of stream) {
-            chunks.push(chunk);
-        }
+
+        await new Promise((resolve, reject) => {
+            stream.on('data', (chunk) => chunks.push(chunk));
+            stream.on('end', () => resolve());
+            stream.on('error', (err) => reject(err));
+        });
+
         const buffer = Buffer.concat(chunks);
 
         return new NextResponse(buffer, {
