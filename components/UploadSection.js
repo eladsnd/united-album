@@ -127,21 +127,9 @@ export default function UploadSection({ folderId, poseTitle }) {
                 faceBoxes = result.boxes || [];
                 setUploadProgress(30);
 
-                // Save face descriptors ONLY if faces were actually detected
-                if (result.descriptors && result.descriptors.length > 0 && result.faceIds[0] !== 'unknown') {
-                    await Promise.all(
-                        result.faceIds.map((faceId, index) =>
-                            fetch('/api/faces', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    faceId,
-                                    descriptor: result.descriptors[index],
-                                    box: result.boxes[index]
-                                })
-                            })
-                        )
-                    );
+                // Face descriptors are now saved inside detectFaceInBrowser sequentially
+                // to avoid race conditions where all faces match to the same person
+                if (result.faceIds && result.faceIds[0] !== 'unknown') {
                     toast.showSuccess(`Detected ${faceIds.length} face(s) successfully!`);
                 } else {
                     toast.showWarning('No faces detected - photo will still be uploaded');

@@ -13,12 +13,25 @@ This directory contains test images for comprehensive face recognition testing.
 - Each contains a single person's face
 - Used to test face matching against the group photo
 
-## Test Suite
+## Test Suites
 
-Run the face recognition integration tests with:
+### Fast Sequential Processing Test (Recommended for CI)
+Validates the fix for the race condition bug without running ML models:
 
 ```bash
-npm test -- faceRecognition.integration.test.js
+npm test -- faceRecognition.sequential.test.js  # ~4 seconds
+```
+
+This test verifies:
+- ✅ 7 faces get 7 unique person IDs (sequential processing)
+- ✅ Demonstrates the bug when processed in parallel
+- ✅ Fast enough for CI/CD pipelines
+
+### Full Integration Test (CPU-based, Slow)
+Runs actual face detection ML models:
+
+```bash
+npm test -- faceRecognition.integration.test.js  # ~2-3 minutes on CPU
 ```
 
 ## What the Tests Verify

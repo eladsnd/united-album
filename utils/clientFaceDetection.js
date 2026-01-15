@@ -82,20 +82,39 @@ export async function detectFaceInBrowser(imageFile) {
             return areaB - areaA; // Largest first
         });
 
-        // Process each detected face
-        const results = await Promise.all(
-            sortedDetections.map(async (detection) => {
-                const descriptor = Array.from(detection.descriptor);
-                const faceId = await matchFaceDescriptor(descriptor);
-                const box = {
-                    x: Math.round(detection.detection.box.x),
-                    y: Math.round(detection.detection.box.y),
-                    width: Math.round(detection.detection.box.width),
-                    height: Math.round(detection.detection.box.height)
-                };
-                return { descriptor, faceId, box };
-            })
-        );
+        // Process each detected face SEQUENTIALLY to avoid race conditions
+        // CRITICAL: We must save each face descriptor immediately after matching
+        // so the next face can match against it. Otherwise, all faces will match
+        // against an empty database and all get assigned the same ID.
+        const results = [];
+        for (const detection of sortedDetections) {
+            const descriptor = Array.from(detection.descriptor);
+            const faceId = await matchFaceDescriptor(descriptor);
+            const box = {
+                x: Math.round(detection.detection.box.x),
+                y: Math.round(detection.detection.box.y),
+                width: Math.round(detection.detection.box.width),
+                height: Math.round(detection.detection.box.height)
+            };
+
+            // Save descriptor immediately so next face can match against it
+            try {
+                await fetch('/api/faces', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        faceId,
+                        descriptor,
+                        box
+                    })
+                });
+                console.log(`[Client Face Detection] Saved descriptor for ${faceId}`);
+            } catch (error) {
+                console.error(`[Client Face Detection] Failed to save descriptor for ${faceId}:`, error);
+            }
+
+            results.push({ descriptor, faceId, box });
+        }
 
         const descriptors = results.map(r => r.descriptor);
         const faceIds = results.map(r => r.faceId);
