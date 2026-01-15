@@ -1,8 +1,15 @@
 import { NextResponse } from 'next/server';
 import { uploadToDrive } from '../../../lib/googleDrive';
 import { savePhoto } from '../../../lib/photoStorage';
+import { applyRateLimit } from '../../../lib/rateLimit';
 
 export async function POST(request) {
+    // Apply rate limiting (10 uploads per minute per IP)
+    const rateLimitResult = applyRateLimit(request, 'upload');
+    if (!rateLimitResult.allowed) {
+        return rateLimitResult.response;
+    }
+
     try {
         const formData = await request.formData();
         const file = formData.get('file');
