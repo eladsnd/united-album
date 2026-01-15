@@ -1,6 +1,8 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export default function AdminPoseManager({ adminToken, onLogout }) {
     const [poses, setPoses] = useState([]);
@@ -201,6 +203,10 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                     <button className="btn" onClick={openAddForm}>
                         + Add New Pose
                     </button>
+                    <Link href="/" className="btn-secondary">
+                        <ArrowLeft size={18} />
+                        Back to Album
+                    </Link>
                     <button className="btn-secondary" onClick={onLogout}>
                         Sign Out
                     </button>

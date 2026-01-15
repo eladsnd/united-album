@@ -2,6 +2,20 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import challengesData from '../data/challenges.json';
+import { Download, Heart, Loader2 } from 'lucide-react';
+
+// Skeleton loader component
+function GallerySkeleton() {
+    return (
+        <div className="gallery-grid">
+            {[...Array(12)].map((_, i) => (
+                <div key={i} className="skeleton-card">
+                    <div className="skeleton-image pulse"></div>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 export default function AlbumGallery() {
     const [photos, setPhotos] = useState([]);
@@ -11,6 +25,8 @@ export default function AlbumGallery() {
     const [loading, setLoading] = useState(true);
     const [faceScrollIndex, setFaceScrollIndex] = useState(0);
     const [imageErrors, setImageErrors] = useState({});
+    const [likedPhotos, setLikedPhotos] = useState(new Set());
+    const [downloading, setDownloading] = useState(false);
 
     const fetchPhotos = async () => {
         try {
@@ -86,6 +102,63 @@ export default function AlbumGallery() {
         window.addEventListener('photoUploaded', fetchPhotos);
         return () => window.removeEventListener('photoUploaded', fetchPhotos);
     }, []);
+
+    // Load liked photos from localStorage
+    useEffect(() => {
+        const saved = localStorage.getItem('likedPhotos');
+        if (saved) {
+            try {
+                setLikedPhotos(new Set(JSON.parse(saved)));
+            } catch (e) {
+                console.error('Failed to load likes:', e);
+            }
+        }
+    }, []);
+
+    const toggleLike = (photoId) => {
+        setLikedPhotos(prev => {
+            const next = new Set(prev);
+            if (next.has(photoId)) {
+                next.delete(photoId);
+            } else {
+                next.add(photoId);
+            }
+            // Save to localStorage
+            localStorage.setItem('likedPhotos', JSON.stringify([...next]));
+            return next;
+        });
+    };
+
+    const isLiked = (photoId) => likedPhotos.has(photoId);
+
+    const handleDownloadAlbum = async () => {
+        setDownloading(true);
+
+        try {
+            const photoIds = filteredPhotos.map(p => p.id);
+
+            const res = await fetch('/api/download-album', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ photoIds }),
+            });
+
+            if (!res.ok) throw new Error('Download failed');
+
+            const blob = await res.blob();
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `united-album-${Date.now()}.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Download failed:', err);
+            alert('Failed to download album');
+        } finally {
+            setDownloading(false);
+        }
+    };
 
     // Extract unique faces from all photos (use mainFaceId for grouping)
     const allMainFaces = photos.map(p => p.mainFaceId || p.faceId).filter(Boolean);
@@ -204,15 +277,33 @@ export default function AlbumGallery() {
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.6 }}>
-                    <p>Loading your moments...</p>
-                </div>
+                <GallerySkeleton />
             ) : filteredPhotos.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>
                     <p>No photos yet. Be the first to capture a moment!</p>
                 </div>
             ) : (
-                <div className="gallery-grid">
+                <>
+                    <div className="gallery-actions">
+                        <button
+                            className="btn"
+                            onClick={handleDownloadAlbum}
+                            disabled={downloading || filteredPhotos.length === 0}
+                        >
+                            {downloading ? (
+                                <>
+                                    <Loader2 className="animate-spin" size={20} />
+                                    Creating ZIP...
+                                </>
+                            ) : (
+                                <>
+                                    <Download size={20} />
+                                    Download Album ({filteredPhotos.length} photos)
+                                </>
+                            )}
+                        </button>
+                    </div>
+                    <div className="gallery-grid">
                     {filteredPhotos.map(photo => {
                         const uploaderId = getUploaderId();
                         const adminMode = isAdmin();
@@ -231,6 +322,22 @@ export default function AlbumGallery() {
                                     ✕
                                 </button>
                             )}
+                            <a
+                                href={`/api/download/${photo.driveId}`}
+                                download
+                                className="download-photo-btn"
+                                aria-label="Download photo"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                <Download size={18} />
+                            </a>
+                            <button
+                                className={`like-photo-btn ${isLiked(photo.id) ? 'liked' : ''}`}
+                                onClick={() => toggleLike(photo.id)}
+                                aria-label={isLiked(photo.id) ? "Unlike photo" : "Like photo"}
+                            >
+                                <Heart size={20} fill={isLiked(photo.id) ? 'currentColor' : 'none'} />
+                            </button>
                             <Image
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
                                 alt="Wedding Photo"
@@ -247,6 +354,7 @@ export default function AlbumGallery() {
                         );
                     })}
                 </div>
+                </>
             )}
         </div>
     );

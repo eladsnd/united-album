@@ -1441,4 +1441,152 @@ img.face-thumb-img {
   .pose-form-modal {
     max-height: 85vh;
   }
+
+  /* Mobile photo card actions - always visible on mobile */
+  .like-photo-btn,
+  .download-photo-btn {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  .delete-photo-btn {
+    opacity: 1;
+    width: 32px;
+    height: 32px;
+  }
+}
+
+/* Admin Back Button */
+.admin-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--secondary);
+  text-decoration: none;
+  font-size: 0.9rem;
+  padding: 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s;
+  margin-bottom: 1rem;
+}
+
+.admin-back-btn:hover {
+  background: var(--accent);
+  color: var(--primary);
+}
+
+/* Skeleton Loader Styles */
+.skeleton-card {
+  aspect-ratio: 1/1;
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--accent);
+}
+
+.skeleton-image {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    rgba(212, 175, 55, 0.05) 25%,
+    rgba(212, 175, 55, 0.15) 50%,
+    rgba(212, 175, 55, 0.05) 75%
+  );
+  background-size: 200% 100%;
+}
+
+.pulse {
+  animation: skeleton-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-pulse {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Gallery Actions - Download Album Button */
+.gallery-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1.5rem;
+  gap: 1rem;
+}
+
+.gallery-actions .btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Like Photo Button */
+.like-photo-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: #999;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: scale(0.8);
+  z-index: 5;
+}
+
+.photo-card:hover .like-photo-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.like-photo-btn.liked {
+  color: #ef4444;
+  opacity: 1;
+}
+
+.like-photo-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Download Photo Button */
+.download-photo-btn {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: none;
+  color: var(--secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+  opacity: 0;
+  transform: scale(0.8);
+  z-index: 5;
+  text-decoration: none;
+}
+
+.photo-card:hover .download-photo-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.download-photo-btn:hover {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.1);
 }

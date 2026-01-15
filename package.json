@@ -21,6 +21,7 @@
     "canvas": "latest",
     "face-api.js": "latest",
     "googleapis": "latest",
+    "jszip": "^3.10.1",
     "lucide-react": "latest",
     "next": "latest",
     "qrcode": "latest",

@@ -1,5 +1,7 @@
 "use client";
 import { useState } from 'react';
+import Link from 'next/link';
+import { ArrowLeft } from 'lucide-react';
 
 export default function AdminAuth({ onAuthSuccess }) {
     const [password, setPassword] = useState('');
@@ -38,6 +40,10 @@ export default function AdminAuth({ onAuthSuccess }) {
     return (
         <div className="admin-auth-container">
             <div className="admin-auth-card card">
+                <Link href="/" className="admin-back-btn">
+                    <ArrowLeft size={20} />
+                    <span>Back to Album</span>
+                </Link>
                 <div className="admin-auth-header">
                     <div className="admin-icon">🔐</div>
                     <h1 style={{ fontWeight: '400', marginBottom: '0.5rem' }}>Administrator Access</h1>
