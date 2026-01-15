@@ -13,6 +13,18 @@ export default function UploadSection({ folderId, poseTitle }) {
     const [retryCount, setRetryCount] = useState(0);
     const toast = useToast();
 
+    // Get or create uploader session ID
+    const getUploaderId = () => {
+        if (typeof window === 'undefined') return null;
+
+        let uploaderId = localStorage.getItem('uploaderId');
+        if (!uploaderId) {
+            uploaderId = `uploader_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            localStorage.setItem('uploaderId', uploaderId);
+        }
+        return uploaderId;
+    };
+
     // Load face detection models on component mount
     useEffect(() => {
         loadFaceModels().then(loaded => {
@@ -123,6 +135,7 @@ export default function UploadSection({ folderId, poseTitle }) {
             const formData = new FormData();
             formData.append('file', compressedFile);
             formData.append('detectFaces', modelsReady ? 'true' : 'false'); // Tell server whether to expect face detection
+            formData.append('uploaderId', getUploaderId()); // Add uploader ID
             if (folderId) formData.append('folderId', folderId);
             if (poseTitle) formData.append('poseId', poseTitle);
 

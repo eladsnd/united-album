@@ -29,13 +29,24 @@ export default function AlbumGallery() {
         }
     };
 
+    const getUploaderId = () => {
+        if (typeof window === 'undefined') return null;
+        return localStorage.getItem('uploaderId');
+    };
+
     const handleDeletePhoto = async (photoId) => {
-        if (!confirm('Delete this photo from the album?')) {
+        if (!confirm('Permanently delete this photo from Google Drive and the album?')) {
+            return;
+        }
+
+        const uploaderId = getUploaderId();
+        if (!uploaderId) {
+            alert('Cannot delete: No uploader ID found');
             return;
         }
 
         try {
-            const res = await fetch(`/api/delete-photo?photoId=${photoId}`, {
+            const res = await fetch(`/api/delete-photo?photoId=${photoId}&uploaderId=${uploaderId}`, {
                 method: 'DELETE'
             });
 
@@ -178,16 +189,22 @@ export default function AlbumGallery() {
                 </div>
             ) : (
                 <div className="gallery-grid">
-                    {filteredPhotos.map(photo => (
+                    {filteredPhotos.map(photo => {
+                        const uploaderId = getUploaderId();
+                        const canDelete = uploaderId && photo.uploaderId === uploaderId;
+
+                        return (
                         <div key={photo.id} className="photo-card">
-                            <button
-                                className="delete-photo-btn"
-                                onClick={() => handleDeletePhoto(photo.id)}
-                                aria-label="Delete photo"
-                                title="Delete photo"
-                            >
-                                ✕
-                            </button>
+                            {canDelete && (
+                                <button
+                                    className="delete-photo-btn"
+                                    onClick={() => handleDeletePhoto(photo.id)}
+                                    aria-label="Delete photo"
+                                    title="Delete your photo"
+                                >
+                                    ✕
+                                </button>
+                            )}
                             <Image
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
                                 alt="Wedding Photo"
@@ -201,7 +218,8 @@ export default function AlbumGallery() {
                                 <div style={{ fontSize: '0.6rem', opacity: 0.8 }}>{new Date(photo.timestamp).toLocaleDateString()}</div>
                             </div>
                         </div>
-                    ))}
+                        );
+                    })}
                 </div>
             )}
         </div>

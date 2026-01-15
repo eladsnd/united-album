@@ -15,6 +15,7 @@ export async function POST(request) {
         const file = formData.get('file');
         const folderId = formData.get('folderId') || process.env.GOOGLE_DRIVE_FOLDER_ID;
         const poseId = formData.get('poseId') || 'unknown_pose';
+        const uploaderId = formData.get('uploaderId'); // Client-generated session ID
 
         // Note: Face detection now happens AFTER upload in the new flow
         // The client uploads the image first, then downloads it back, detects faces,
@@ -70,6 +71,7 @@ export async function POST(request) {
             faceIds: [], // Will be updated by /api/update-faces
             faceBoxes: [], // Will be updated by /api/update-faces
             poseId: poseId,
+            uploaderId: uploaderId || null, // Track who uploaded this photo
             timestamp: new Date().toISOString()
         };
 
