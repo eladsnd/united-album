@@ -1,23 +1,23 @@
 [
-    {
-        "id": "dip",
-        "title": "The Romantic Dip",
-        "instruction": "Groom, dip the bride back gently and share a romantic kiss.",
-        "image": "/challenges/dip.png",
-        "folderId": "1O9XzS3aj1YZgVxCRd0m6R7xRcx1VHPvt"
-    },
-    {
-        "id": "whisper",
-        "title": "Secrets & Smiles",
-        "instruction": "Whisper something funny or sweet in her ear to get a genuine laugh.",
-        "image": "/challenges/whisper.png",
-        "folderId": "1O9XzS3aj1YZgVxCRd0m6R7xRcx1VHPvt"
-    },
-    {
-        "id": "back-to-back",
-        "title": "Unified Strength",
-        "instruction": "Stand back to back, hold hands, and look over your shoulder at the camera with a smile.",
-        "image": "/challenges/back-to-back.png",
-        "folderId": "1O9XzS3aj1YZgVxCRd0m6R7xRcx1VHPvt"
-    }
+  {
+    "id": "dip",
+    "title": "The Romantic Dip",
+    "instruction": "Groom, dip the bride back gently and share a romantic kiss.",
+    "image": "/challenges/dip.png",
+    "folderId": "1O9XzS3aj1YZgVxCRd0m6R7xRcx1VHPvt"
+  },
+  {
+    "id": "whisper",
+    "title": "Secrets & Smiles",
+    "instruction": "Whisper something funny or sweet in her ear to get a genuine laugh.",
+    "image": "/challenges/whisper.png",
+    "folderId": "1O9XzS3aj1YZgVxCRd0m6R7xRcx1VHPvt"
+  },
+  {
+    "id": "back-to-back",
+    "title": "Unified Strength",
+    "instruction": "Stand back to back, hold hands, and look over your shoulder at the camera with a smile.",
+    "image": "/challenges/back-to-back.png",
+    "folderId": "1O9XzS3aj1YZgVxCRd0m6R7xRcx1VHPvt"
+  }
 ]

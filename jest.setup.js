@@ -67,6 +67,27 @@ global.Blob = class Blob {
     }
 };
 
+global.File = class File extends global.Blob {
+    constructor(parts, filename, options = {}) {
+        super(parts, options);
+        this.name = filename;
+        this.lastModified = options.lastModified || Date.now();
+    }
+};
+
+// Mock NextResponse for API route testing
+global.NextResponse = class NextResponse extends global.Response {
+    static json(data, init = {}) {
+        return new global.Response(JSON.stringify(data), {
+            ...init,
+            headers: {
+                'content-type': 'application/json',
+                ...init.headers,
+            },
+        });
+    }
+};
+
 // Robust next/image mock
 jest.mock('next/image', () => ({
     __esModule: true,

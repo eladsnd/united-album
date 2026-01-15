@@ -10,27 +10,34 @@ export async function GET() {
 
         // For each face, find a representative photo with bounding box
         const faceThumbnails = faces.map(face => {
-            // Find ANY photo containing this face (check both mainFaceId and faceIds array)
-            const photo = photos.find(p => {
-                const faceIds = p.faceIds || [p.mainFaceId || p.faceId];
-                return faceIds.includes(face.faceId);
-            });
-
             let faceUrl = null;
-            if (photo) {
-                // Try to use cropped face if boxes are available
-                if (photo.faceBoxes && photo.faceBoxes.length > 0) {
-                    const faceIds = photo.faceIds || [photo.mainFaceId];
-                    const faceIndex = faceIds.indexOf(face.faceId);
-                    if (faceIndex >= 0 && photo.faceBoxes[faceIndex]) {
-                        const box = photo.faceBoxes[faceIndex];
-                        faceUrl = `/api/face-crop/${photo.driveId}?x=${box.x}&y=${box.y}&w=${box.width}&h=${box.height}`;
-                    }
-                }
 
-                // Fallback to full photo URL if no crop available
-                if (!faceUrl) {
-                    faceUrl = photo.url;
+            // PRIORITY 1: Use stored face thumbnail from Drive (high-quality crop from original image)
+            if (face.thumbnailDriveId) {
+                faceUrl = `/api/image/${face.thumbnailDriveId}`;
+                console.log(`[Face Thumbnails] Using stored thumbnail for ${face.faceId}: ${faceUrl}`);
+            } else {
+                // FALLBACK: Find ANY photo containing this face and crop from it
+                const photo = photos.find(p => {
+                    const faceIds = p.faceIds || [p.mainFaceId || p.faceId];
+                    return faceIds.includes(face.faceId);
+                });
+
+                if (photo) {
+                    // Try to use cropped face if boxes are available
+                    if (photo.faceBoxes && photo.faceBoxes.length > 0) {
+                        const faceIds = photo.faceIds || [photo.mainFaceId];
+                        const faceIndex = faceIds.indexOf(face.faceId);
+                        if (faceIndex >= 0 && photo.faceBoxes[faceIndex]) {
+                            const box = photo.faceBoxes[faceIndex];
+                            faceUrl = `/api/face-crop/${photo.driveId}?x=${box.x}&y=${box.y}&w=${box.width}&h=${box.height}`;
+                        }
+                    }
+
+                    // Fallback to full photo URL if no crop available
+                    if (!faceUrl) {
+                        faceUrl = photo.url;
+                    }
                 }
             }
 
