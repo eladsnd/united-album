@@ -399,6 +399,40 @@ h3 {
   aspect-ratio: 1/1;
 }
 
+.delete-photo-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  color: #d32f2f;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  z-index: 10;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transform: scale(0.8);
+}
+
+.photo-card:hover .delete-photo-btn {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.delete-photo-btn:hover {
+  background: #d32f2f;
+  color: white;
+  transform: scale(1.1);
+  box-shadow: 0 2px 8px rgba(211, 47, 47, 0.4)
+}
+
 .photo-card:hover {
   transform: scale(1.03);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
@@ -521,9 +555,14 @@ h3 {
   object-fit: cover;
   object-position: center;
   border: 2px solid var(--glass-border);
-  background: var(--accent);
   flex-shrink: 0;
   transition: all 0.3s ease;
+  display: block; /* Ensure images are displayed */
+}
+
+/* Actual img elements should have no background */
+img.face-thumb-img {
+  background: transparent;
 }
 
 .face-thumb.active .face-thumb-img {

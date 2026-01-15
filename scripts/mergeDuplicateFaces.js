@@ -19,10 +19,7 @@ const FACES_FILE = path.join(process.cwd(), 'data', 'faces.json');
 
 // Define merge mappings: { duplicateId: keepId }
 const MERGE_MAP = {
-    'person_8': 'person_6',  // Merge person_8 into person_6
-    'person_5': 'person_9',  // Merge person_5 into person_9
-    'person_10': 'person_7', // Merge person_10 into person_7
-    'person_4': 'person_11'  // Merge person_4 into person_11
+    'person_1': 'person_6'  // Merge person_1 into person_6
 };
 
 function mergeFaces() {

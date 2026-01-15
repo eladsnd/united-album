@@ -20,11 +20,35 @@ export default function AlbumGallery() {
             // Fetch face thumbnails
             const facesRes = await fetch('/api/face-thumbnails');
             const facesData = await facesRes.json();
+            console.log('[FaceGallery] Face thumbnails:', facesData);
             setFaceThumbnails(facesData);
         } catch (err) {
             console.error('Failed to fetch photos:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDeletePhoto = async (photoId) => {
+        if (!confirm('Delete this photo from the album?')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/delete-photo?photoId=${photoId}`, {
+                method: 'DELETE'
+            });
+
+            if (res.ok) {
+                console.log('[FaceGallery] Photo deleted successfully');
+                fetchPhotos(); // Refresh gallery
+            } else {
+                const error = await res.json();
+                alert('Failed to delete photo: ' + error.error);
+            }
+        } catch (err) {
+            console.error('[FaceGallery] Delete failed:', err);
+            alert('Failed to delete photo');
         }
     };
 
@@ -100,6 +124,8 @@ export default function AlbumGallery() {
                                 // Extract person number for display (person_3 → "3")
                                 const personNumber = face.faceId.replace('person_', '');
 
+                                console.log(`[FaceGallery] ${face.faceId}: hasFaceUrl=${hasFaceUrl}, hasError=${hasError}, url=${face.faceUrl}`);
+
                                 return (
                                     <button
                                         key={face.faceId}
@@ -111,7 +137,11 @@ export default function AlbumGallery() {
                                                 src={face.faceUrl}
                                                 alt={`Person ${personNumber}`}
                                                 className="face-thumb-img"
-                                                onError={() => setImageErrors(prev => ({ ...prev, [face.faceId]: true }))}
+                                                onError={(e) => {
+                                                    console.error(`[FaceGallery] Image load error for ${face.faceId}:`, e);
+                                                    setImageErrors(prev => ({ ...prev, [face.faceId]: true }));
+                                                }}
+                                                onLoad={() => console.log(`[FaceGallery] Image loaded successfully: ${face.faceId}`)}
                                                 loading="lazy"
                                             />
                                         ) : (
@@ -150,6 +180,14 @@ export default function AlbumGallery() {
                 <div className="gallery-grid">
                     {filteredPhotos.map(photo => (
                         <div key={photo.id} className="photo-card">
+                            <button
+                                className="delete-photo-btn"
+                                onClick={() => handleDeletePhoto(photo.id)}
+                                aria-label="Delete photo"
+                                title="Delete photo"
+                            >
+                                ✕
+                            </button>
                             <Image
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
                                 alt="Wedding Photo"

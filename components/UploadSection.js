@@ -117,7 +117,6 @@ export default function UploadSection({ folderId, poseTitle }) {
 
             // Step 1: Compress and upload image (40% progress)
             setStatus('uploading');
-            toast.showInfo('Uploading photo...');
             const compressedFile = await compressImage(file);
             setUploadProgress(20);
 
@@ -131,7 +130,6 @@ export default function UploadSection({ folderId, poseTitle }) {
             const uploadData = await uploadWithRetry(formData);
             const photoId = uploadData.photo.driveId;
 
-            toast.showSuccess('Photo uploaded! Detecting faces...');
             setUploadProgress(50);
 
             // Step 2: If face detection is enabled, detect faces from the uploaded image
@@ -185,22 +183,25 @@ export default function UploadSection({ folderId, poseTitle }) {
                         body: thumbFormData
                     });
 
+                    // Show final success with face info
                     const newFacesCount = newFaceThumbnails.length;
                     if (newFacesCount > 0) {
-                        toast.showSuccess(`Detected ${result.faceIds.length} face(s), ${newFacesCount} new!`);
+                        toast.showSuccess(`Photo uploaded! ${result.faceIds.length} face(s), ${newFacesCount} new 🎉`);
                     } else {
-                        toast.showSuccess(`Detected ${result.faceIds.length} face(s) - all recognized!`);
+                        toast.showSuccess(`Photo uploaded! ${result.faceIds.length} face(s) - all recognized 🎉`);
                     }
                 } else {
-                    toast.showInfo('No faces detected in photo');
+                    toast.showSuccess('Photo uploaded! No faces detected 🎉');
                 }
+            } else {
+                // No face detection - just show success
+                toast.showSuccess('Photo uploaded successfully! 🎉');
             }
 
             setUploadProgress(100);
 
             setStatus('success');
             setUploadedUrl(uploadData.photo?.url || uploadData.driveLink);
-            toast.showSuccess('Photo uploaded successfully! 🎉');
 
             // Trigger gallery refresh
             window.dispatchEvent(new Event('photoUploaded'));
