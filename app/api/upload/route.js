@@ -25,12 +25,9 @@ export async function POST(request) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
         }
 
-        console.log(`[Upload API] Processing upload for file: ${file.name}, pose: ${poseId}, main face: ${mainFaceId}`);
+        console.log(`[Upload API] Processing upload for file: ${file.name}, pose: ${poseId}`);
 
         const buffer = Buffer.from(await file.arrayBuffer());
-
-        // Face detection now happens client-side before upload
-        console.log(`[Upload API] Using client-detected face IDs`);
 
         // 2. Upload to Google Drive
         let driveData = { id: 'mock_drive_id', webViewLink: '/challenges/dip.png' };
