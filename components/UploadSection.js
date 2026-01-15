@@ -68,7 +68,7 @@ export default function UploadSection({ folderId, poseTitle }) {
                             type: 'image/jpeg',
                             lastModified: Date.now(),
                         }));
-                    }, 'image/jpeg', 0.95); // 95% quality for better image fidelity
+                    }, 'image/jpeg', 1.0); // 100% quality - maximum image fidelity
                 };
             };
         });
