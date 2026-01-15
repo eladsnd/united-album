@@ -1,9 +1,5 @@
 import { NextResponse } from 'next/server';
-import { loadPhotos } from '../../../lib/photoStorage';
-import fs from 'fs';
-import path from 'path';
-
-const PHOTOS_FILE = path.join(process.cwd(), 'data', 'photos.json');
+import { getPhotos, deletePhoto } from '../../../lib/photoStorage';
 
 /**
  * DELETE /api/delete-photo?photoId=123
@@ -24,30 +20,30 @@ export async function DELETE(request) {
 
         console.log(`[Delete Photo API] Deleting photo ${photoId}`);
 
-        // Load photos
-        const photos = loadPhotos();
-        const photoIndex = photos.findIndex(p => p.id === photoId);
+        // Find the photo first
+        const photos = getPhotos();
+        const photo = photos.find(p => p.id === photoId);
 
-        if (photoIndex === -1) {
+        if (!photo) {
             console.error(`[Delete Photo API] Photo ${photoId} not found`);
             return NextResponse.json({ error: 'Photo not found' }, { status: 404 });
         }
 
-        const deletedPhoto = photos[photoIndex];
-        console.log(`[Delete Photo API] Found photo: ${deletedPhoto.name}`);
+        console.log(`[Delete Photo API] Found photo: ${photo.name}, driveId: ${photo.driveId}`);
 
-        // Remove from array
-        photos.splice(photoIndex, 1);
+        // Delete by driveId
+        const success = deletePhoto(photo.driveId);
 
-        // Save updated photos
-        fs.writeFileSync(PHOTOS_FILE, JSON.stringify(photos, null, 2));
+        if (!success) {
+            return NextResponse.json({ error: 'Failed to delete photo' }, { status: 500 });
+        }
 
         console.log(`[Delete Photo API] Successfully deleted photo ${photoId}`);
-        console.log(`[Delete Photo API] Note: Drive file ${deletedPhoto.driveId} and thumbnails still exist`);
+        console.log(`[Delete Photo API] Note: Drive file ${photo.driveId} and thumbnails still exist`);
 
         return NextResponse.json({
             success: true,
-            deletedPhoto,
+            deletedPhoto: photo,
             message: 'Photo deleted from album. Drive file remains for backup.'
         });
 
