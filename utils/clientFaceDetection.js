@@ -160,7 +160,7 @@ function calculateAverageDescriptor(descriptors) {
 /**
  * Match a face descriptor against known faces (with multi-descriptor averaging)
  * @param {number[]} descriptor - 128-dimensional face descriptor
- * @returns {Promise<string>} - Face ID (person_0, person_1, etc.)
+ * @returns {Promise<string>} - Face ID (person_1, person_2, etc. - human-friendly numbering)
  */
 async function matchFaceDescriptor(descriptor) {
     try {
@@ -169,8 +169,8 @@ async function matchFaceDescriptor(descriptor) {
         const knownFaces = await response.json();
 
         if (knownFaces.length === 0) {
-            // First face - assign person_0
-            return 'person_0';
+            // First face - assign person_1 (human-friendly numbering starts at 1)
+            return 'person_1';
         }
 
         let bestMatch = null;
@@ -216,8 +216,16 @@ async function matchFaceDescriptor(descriptor) {
             return bestMatch.faceId;
         }
 
-        // New face - assign next available ID
-        const nextId = `person_${knownFaces.length}`;
+        // New face - assign next available ID (human-friendly: 1, 2, 3...)
+        // Find the highest existing person number
+        const personNumbers = knownFaces
+            .map(f => f.faceId.match(/person_(\d+)/))
+            .filter(match => match)
+            .map(match => parseInt(match[1]));
+
+        const maxNumber = personNumbers.length > 0 ? Math.max(...personNumbers) : 0;
+        const nextId = `person_${maxNumber + 1}`;
+
         console.log(`[Client Face Detection] New face detected: ${nextId} (best distance: ${bestDistance.toFixed(3)}, threshold: ${threshold})`);
         return nextId;
 

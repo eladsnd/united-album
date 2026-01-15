@@ -84,7 +84,7 @@ export default function AlbumGallery() {
 
                         <div className="face-thumbnails">
                             <button
-                                className={`face-thumb ${faceFilter === 'all' ? 'active' : ''}`}
+                                className={`face-thumb all-filter ${faceFilter === 'all' ? 'active' : ''}`}
                                 onClick={() => setFaceFilter('all')}
                             >
                                 <div className="face-thumb-img all-faces">
@@ -97,16 +97,19 @@ export default function AlbumGallery() {
                                 const hasError = imageErrors[face.faceId];
                                 const hasFaceUrl = face.faceUrl && face.faceUrl !== '#';
 
+                                // Extract person number for display (person_3 → "3")
+                                const personNumber = face.faceId.replace('person_', '');
+
                                 return (
                                     <button
                                         key={face.faceId}
-                                        className={`face-thumb ${faceFilter === face.faceId ? 'active' : ''}`}
+                                        className={`face-thumb person-filter ${faceFilter === face.faceId ? 'active' : ''}`}
                                         onClick={() => setFaceFilter(face.faceId)}
                                     >
                                         {hasFaceUrl && !hasError ? (
                                             <img
                                                 src={face.faceUrl}
-                                                alt={`Face ${face.faceId}`}
+                                                alt={`Person ${personNumber}`}
                                                 className="face-thumb-img"
                                                 onError={() => setImageErrors(prev => ({ ...prev, [face.faceId]: true }))}
                                                 loading="lazy"
@@ -116,7 +119,7 @@ export default function AlbumGallery() {
                                                 👤
                                             </div>
                                         )}
-                                        <span className="face-thumb-label">{face.faceId}</span>
+                                        <span className="face-thumb-label">Person {personNumber}</span>
                                         <span className="face-thumb-count">{face.photoCount}</span>
                                     </button>
                                 );

@@ -532,14 +532,38 @@ h3 {
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
-.face-thumb-img.all-faces,
+.face-thumb-img.all-faces {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--primary);
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+  opacity: 0.8;
+}
+
 .face-thumb-img.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
   color: var(--secondary);
+  background: rgba(0, 0, 0, 0.02);
   opacity: 0.6;
+}
+
+/* Make "All" filter visually distinct */
+.face-thumb.all-filter {
+  opacity: 0.9;
+}
+
+.face-thumb.all-filter:hover {
+  opacity: 1;
+}
+
+/* Person filters show actual faces */
+.face-thumb.person-filter .face-thumb-img {
+  background: white;
 }
 
 .face-thumb-label {
