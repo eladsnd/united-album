@@ -23,6 +23,8 @@ export function calculateSmartCrop(faceBoxes, imageDimensions, options = {}) {
         maxCropPercentage = 0.85,   // Maximum amount to crop (keep at least 85% of image)
     } = options;
 
+    console.log('[Smart Crop] Starting calculation with', faceBoxes?.length, 'faces, image:', imageDimensions);
+
     // If no faces detected, return null (no crop)
     if (!faceBoxes || faceBoxes.length === 0) {
         console.log('[Smart Crop] No faces detected, skipping crop');

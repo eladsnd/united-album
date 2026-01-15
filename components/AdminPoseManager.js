@@ -341,7 +341,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                                                         className="remove-image-btn"
                                                         onClick={() => {
                                                             setImageFile(null);
-                                                            setImagePreview(editingPose ? editingPose.image : null);
+                                                            setImagePreview(null);
                                                         }}
                                                     >
                                                         ✕ Remove
