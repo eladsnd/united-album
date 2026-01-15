@@ -61,19 +61,15 @@ describe('MobileAccessQR Component', () => {
     it('falls back to current URL if IP fetch fails', async () => {
         fetch.mockRejectedValueOnce(new Error('Network error'));
 
-        // Bypassing JSDOM limitation
-        delete window.location;
-        window.location = new URL('http://localhost:3000/fallback');
-
         await act(async () => {
             render(<MobileAccessQR />);
         });
 
         await waitFor(() => {
+            // Should fall back to window.location (localhost:3000 from beforeEach)
             expect(QRCode.toCanvas).toHaveBeenCalledWith(
                 expect.any(HTMLCanvasElement),
-                // URL objects in JSDOM should return the full href
-                expect.stringContaining('/fallback'),
+                expect.stringContaining('localhost'),
                 expect.any(Object),
                 expect.any(Function)
             );

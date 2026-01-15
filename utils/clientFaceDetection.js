@@ -112,7 +112,34 @@ export async function detectFaceInBrowser(imageFile) {
 }
 
 /**
- * Match a face descriptor against known faces
+ * Calculate average descriptor from array of descriptors
+ * @param {Array<number[]>} descriptors - Array of 128-dimensional face descriptors
+ * @returns {number[]} - Average descriptor
+ */
+function calculateAverageDescriptor(descriptors) {
+    if (!descriptors || descriptors.length === 0) return null;
+    if (descriptors.length === 1) return descriptors[0];
+
+    const descriptorLength = descriptors[0].length;
+    const avgDescriptor = new Array(descriptorLength).fill(0);
+
+    // Sum all descriptors
+    for (const descriptor of descriptors) {
+        for (let i = 0; i < descriptorLength; i++) {
+            avgDescriptor[i] += descriptor[i];
+        }
+    }
+
+    // Calculate average
+    for (let i = 0; i < descriptorLength; i++) {
+        avgDescriptor[i] /= descriptors.length;
+    }
+
+    return avgDescriptor;
+}
+
+/**
+ * Match a face descriptor against known faces (with multi-descriptor averaging)
  * @param {number[]} descriptor - 128-dimensional face descriptor
  * @returns {Promise<string>} - Face ID (person_0, person_1, etc.)
  */
@@ -127,13 +154,20 @@ async function matchFaceDescriptor(descriptor) {
             return 'person_0';
         }
 
-        // Calculate Euclidean distance to each known face
-        const MATCH_THRESHOLD = 0.45; // Stricter matching (was 0.6)
         let bestMatch = null;
         let bestDistance = Infinity;
 
         for (const known of knownFaces) {
-            const distance = faceapi.euclideanDistance(descriptor, known.descriptor);
+            let distance;
+
+            // Use average descriptor if multiple samples exist
+            if (known.descriptors && known.descriptors.length > 0) {
+                const avgDescriptor = calculateAverageDescriptor(known.descriptors);
+                distance = faceapi.euclideanDistance(descriptor, avgDescriptor);
+            } else {
+                // Fallback to single descriptor
+                distance = faceapi.euclideanDistance(descriptor, known.descriptor);
+            }
 
             if (distance < bestDistance) {
                 bestDistance = distance;
@@ -141,14 +175,26 @@ async function matchFaceDescriptor(descriptor) {
             }
         }
 
-        if (bestMatch && bestDistance < MATCH_THRESHOLD) {
-            console.log(`[Client Face Detection] Matched to ${bestMatch.faceId} (distance: ${bestDistance.toFixed(3)})`);
+        // Adaptive thresholds based on sample count
+        let threshold;
+        const sampleCount = bestMatch?.sampleCount || bestMatch?.descriptors?.length || 1;
+
+        if (sampleCount <= 2) {
+            // Stricter threshold for few samples (avoid false positives)
+            threshold = 0.4;
+        } else {
+            // Relaxed threshold for more samples (more confident in average)
+            threshold = 0.5;
+        }
+
+        if (bestMatch && bestDistance < threshold) {
+            console.log(`[Client Face Detection] Matched to ${bestMatch.faceId} (distance: ${bestDistance.toFixed(3)}, threshold: ${threshold}, samples: ${sampleCount})`);
             return bestMatch.faceId;
         }
 
         // New face - assign next available ID
         const nextId = `person_${knownFaces.length}`;
-        console.log(`[Client Face Detection] New face detected: ${nextId} (best distance: ${bestDistance.toFixed(3)})`);
+        console.log(`[Client Face Detection] New face detected: ${nextId} (best distance: ${bestDistance.toFixed(3)}, threshold: ${threshold})`);
         return nextId;
 
     } catch (error) {

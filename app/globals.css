@@ -465,19 +465,123 @@ h3 {
   justify-content: center;
 }
 
+/* Face Thumbnails Section */
+.face-thumbnails-container {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  justify-content: center;
+  position: relative;
+}
+
+.face-thumbnails {
+  display: flex;
+  gap: 1rem;
+  overflow-x: auto;
+  padding: 0.5rem 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.face-thumbnails::-webkit-scrollbar {
+  display: none;
+}
+
+.face-thumb {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  flex-shrink: 0;
+}
+
+.face-thumb:hover {
+  background: var(--accent);
+  transform: translateY(-2px);
+}
+
+.face-thumb.active {
+  background: rgba(212, 175, 55, 0.1);
+}
+
 .face-thumb-img {
   width: 60px;
   height: 60px;
+  min-width: 60px;
+  min-height: 60px;
+  max-width: 60px;
+  max-height: 60px;
   border-radius: 50%;
   object-fit: cover;
   object-position: center;
   border: 2px solid var(--glass-border);
   background: var(--accent);
+  flex-shrink: 0;
+  transition: all 0.3s ease;
+}
+
+.face-thumb.active .face-thumb-img {
+  border-color: var(--primary);
+  border-width: 3px;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+}
+
+.face-thumb-img.all-faces,
+.face-thumb-img.placeholder {
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 2rem;
+  color: var(--secondary);
+  opacity: 0.6;
+}
+
+.face-thumb-label {
+  font-size: 0.75rem;
+  color: var(--secondary);
+  font-family: system-ui, -apple-system, sans-serif;
+  text-align: center;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.face-thumb-count {
+  font-size: 0.65rem;
+  color: var(--primary);
+  font-weight: 600;
+  background: rgba(212, 175, 55, 0.1);
+  padding: 0.1rem 0.5rem;
+  border-radius: 12px;
+}
+
+.scroll-arrow {
+  background: white;
+  border: 1px solid var(--glass-border);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--primary);
+  font-size: 1.5rem;
+  transition: all 0.3s ease;
   flex-shrink: 0;
+}
+
+.scroll-arrow:hover {
+  background: var(--primary);
+  color: white;
+  transform: scale(1.1);
 }
 
 .carousel-track {
@@ -590,5 +694,24 @@ h3 {
 
   .carousel-track-container {
     height: 480px;
+  }
+
+  /* Mobile face thumbnails */
+  .face-thumbnails-container {
+    gap: 0.5rem;
+  }
+
+  .face-thumbnails {
+    gap: 0.75rem;
+  }
+
+  .face-thumb {
+    padding: 0.25rem;
+  }
+
+  .scroll-arrow {
+    width: 32px;
+    height: 32px;
+    font-size: 1.2rem;
   }
 }

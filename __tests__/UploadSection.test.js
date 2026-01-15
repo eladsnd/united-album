@@ -1,16 +1,33 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import UploadSection from '../components/UploadSection';
 
+// Mock face-api.js
+jest.mock('../utils/clientFaceDetection', () => ({
+    loadFaceModels: jest.fn(() => Promise.resolve(true)),
+    detectFaceInBrowser: jest.fn(() => Promise.resolve({
+        faceIds: ['person_0'],
+        mainFaceId: 'person_0',
+        descriptors: [[0.1, 0.2, 0.3]], // Mock 128D descriptor (simplified)
+        boxes: [{ x: 10, y: 10, width: 50, height: 50 }]
+    }))
+}));
+
 // Mock fetch
-global.fetch = jest.fn(() =>
-    Promise.resolve({
+global.fetch = jest.fn((url) => {
+    if (url === '/api/faces') {
+        return Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ success: true })
+        });
+    }
+    return Promise.resolve({
         ok: true,
         headers: {
             get: (name) => name === 'content-type' ? 'application/json' : null
         },
-        json: () => Promise.resolve({ success: true, driveLink: '/api/image/mock_id' }),
-    })
-);
+        json: () => Promise.resolve({ success: true, photo: { id: 1, driveId: 'mock_id' } }),
+    });
+});
 
 // Mock FileReader and Image for compression
 class MockFileReader {

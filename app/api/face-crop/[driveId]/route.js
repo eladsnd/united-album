@@ -37,8 +37,11 @@ export async function GET(request, { params }) {
                 width: cropW,
                 height: cropH
             })
-            .resize(200, 200, { fit: 'cover' }) // Resize to thumbnail size
-            .jpeg({ quality: 85 })
+            .resize(120, 120, {
+                fit: 'cover',
+                position: 'center'
+            }) // Resize to 2x thumbnail size for retina displays (60px * 2)
+            .jpeg({ quality: 90 })
             .toBuffer();
 
         return new NextResponse(croppedImage, {

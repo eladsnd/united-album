@@ -9,6 +9,7 @@ export default function AlbumGallery() {
     const [poseFilter, setPoseFilter] = useState('all');
     const [loading, setLoading] = useState(true);
     const [faceScrollIndex, setFaceScrollIndex] = useState(0);
+    const [imageErrors, setImageErrors] = useState({});
 
     const fetchPhotos = async () => {
         try {
@@ -41,9 +42,9 @@ export default function AlbumGallery() {
         ;
 
     const filteredPhotos = photos.filter(p => {
-        // Filter by main face (primary person in photo)
-        const mainFace = p.mainFaceId || p.faceId || 'unknown';
-        const faceMatch = faceFilter === 'all' || mainFace === faceFilter;
+        // Filter by ANY face in photo (not just main face)
+        const faceIds = p.faceIds || [p.mainFaceId || p.faceId || 'unknown'];
+        const faceMatch = faceFilter === 'all' || faceIds.includes(faceFilter);
         const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
         return faceMatch && poseMatch;
     });
@@ -92,33 +93,34 @@ export default function AlbumGallery() {
                                 <span className="face-thumb-label">All</span>
                             </button>
 
-                            {faceThumbnails.slice(faceScrollIndex, faceScrollIndex + 5).map(face => (
-                                <button
-                                    key={face.faceId}
-                                    className={`face-thumb ${faceFilter === face.faceId ? 'active' : ''}`}
-                                    onClick={() => setFaceFilter(face.faceId)}
-                                >
-                                    {face.faceUrl ? (
-                                        <img
-                                            src={face.faceUrl}
-                                            alt={face.faceId}
-                                            className="face-thumb-img"
-                                            onError={(e) => {
-                                                e.target.style.display = 'none';
-                                                e.target.nextSibling.style.display = 'flex';
-                                            }}
-                                        />
-                                    ) : null}
-                                    <div
-                                        className="face-thumb-img placeholder"
-                                        style={{ display: face.faceUrl ? 'none' : 'flex' }}
+                            {faceThumbnails.slice(faceScrollIndex, faceScrollIndex + 5).map(face => {
+                                const hasError = imageErrors[face.faceId];
+                                const showPlaceholder = !face.faceUrl || hasError;
+
+                                return (
+                                    <button
+                                        key={face.faceId}
+                                        className={`face-thumb ${faceFilter === face.faceId ? 'active' : ''}`}
+                                        onClick={() => setFaceFilter(face.faceId)}
                                     >
-                                        👤
-                                    </div>
-                                    <span className="face-thumb-label">{face.faceId}</span>
-                                    <span className="face-thumb-count">{face.photoCount}</span>
-                                </button>
-                            ))}
+                                        {!showPlaceholder ? (
+                                            <img
+                                                src={face.faceUrl}
+                                                alt={`Face ${face.faceId}`}
+                                                className="face-thumb-img"
+                                                onError={() => setImageErrors(prev => ({ ...prev, [face.faceId]: true }))}
+                                                loading="lazy"
+                                            />
+                                        ) : (
+                                            <div className="face-thumb-img placeholder">
+                                                👤
+                                            </div>
+                                        )}
+                                        <span className="face-thumb-label">{face.faceId}</span>
+                                        <span className="face-thumb-count">{face.photoCount}</span>
+                                    </button>
+                                );
+                            })}
                         </div>
 
                         {faceScrollIndex + 5 < faceThumbnails.length && (
