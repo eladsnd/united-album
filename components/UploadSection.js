@@ -152,7 +152,22 @@ export default function UploadSection({ folderId, poseTitle }) {
                 setUploadProgress(90);
 
                 if (result.faceIds && result.faceIds[0] !== 'unknown') {
-                    // Upload face thumbnails
+                    // Fetch existing faces to check which ones already have thumbnails
+                    const facesResponse = await fetch('/api/faces');
+                    const existingFaces = await facesResponse.json();
+                    const facesWithThumbnails = new Set(
+                        existingFaces
+                            .filter(f => f.thumbnailDriveId)
+                            .map(f => f.faceId)
+                    );
+
+                    // Only upload thumbnails for NEW faces (no existing thumbnail)
+                    const newFaceThumbnails = result.faceThumbnails.filter(
+                        thumb => !facesWithThumbnails.has(thumb.faceId)
+                    );
+
+                    console.log(`[Upload] ${result.faceIds.length} faces detected, ${newFaceThumbnails.length} new thumbnails to upload`);
+
                     const thumbFormData = new FormData();
                     thumbFormData.append('photoId', uploadData.photo.id);
                     thumbFormData.append('driveId', photoId);
@@ -160,8 +175,8 @@ export default function UploadSection({ folderId, poseTitle }) {
                     thumbFormData.append('mainFaceId', result.mainFaceId);
                     thumbFormData.append('faceBoxes', JSON.stringify(result.boxes));
 
-                    // Upload face thumbnails
-                    result.faceThumbnails.forEach((thumbnail) => {
+                    // Only append thumbnails for new faces
+                    newFaceThumbnails.forEach((thumbnail) => {
                         thumbFormData.append(`faceThumbnail_${thumbnail.faceId}`, thumbnail.blob, `face_${thumbnail.faceId}.jpg`);
                     });
 
@@ -170,7 +185,12 @@ export default function UploadSection({ folderId, poseTitle }) {
                         body: thumbFormData
                     });
 
-                    toast.showSuccess(`Detected ${result.faceIds.length} face(s) successfully!`);
+                    const newFacesCount = newFaceThumbnails.length;
+                    if (newFacesCount > 0) {
+                        toast.showSuccess(`Detected ${result.faceIds.length} face(s), ${newFacesCount} new!`);
+                    } else {
+                        toast.showSuccess(`Detected ${result.faceIds.length} face(s) - all recognized!`);
+                    }
                 } else {
                     toast.showInfo('No faces detected in photo');
                 }

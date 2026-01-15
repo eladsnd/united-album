@@ -41,33 +41,40 @@ export async function POST(request) {
 
         console.log(`[Update Faces API] Found ${faceThumbnailFiles.length} face thumbnails to upload`);
 
-        // Upload face thumbnails to Google Drive in 'faces' subfolder
-        const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+        let successfulThumbnails = [];
 
-        // Find or create 'faces' subfolder
-        const facesFolderId = await findOrCreateFolder('faces', folderId);
+        // Only upload thumbnails if there are new faces
+        if (faceThumbnailFiles.length > 0) {
+            // Upload face thumbnails to Google Drive in 'faces' subfolder
+            const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
 
-        const thumbnailUploads = await Promise.all(
-            faceThumbnailFiles.map(async ({ faceId, file: thumbFile }) => {
-                try {
-                    const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
-                    const thumbData = await uploadToDrive(
-                        thumbBuffer,
-                        `${faceId}.jpg`,
-                        facesFolderId
-                    );
-                    console.log(`[Update Faces API] Uploaded thumbnail for ${faceId}: ${thumbData.id}`);
-                    return { faceId, thumbnailDriveId: thumbData.id };
-                } catch (err) {
-                    console.error(`[Update Faces API] Failed to upload thumbnail for ${faceId}:`, err);
-                    return null;
-                }
-            })
-        );
+            // Find or create 'faces' subfolder
+            const facesFolderId = await findOrCreateFolder('faces', folderId);
 
-        // Filter out failed uploads
-        const successfulThumbnails = thumbnailUploads.filter(t => t);
-        console.log(`[Update Faces API] Successfully uploaded ${successfulThumbnails.length} thumbnails`);
+            const thumbnailUploads = await Promise.all(
+                faceThumbnailFiles.map(async ({ faceId, file: thumbFile }) => {
+                    try {
+                        const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
+                        const thumbData = await uploadToDrive(
+                            thumbBuffer,
+                            `${faceId}.jpg`,
+                            facesFolderId
+                        );
+                        console.log(`[Update Faces API] Uploaded thumbnail for ${faceId}: ${thumbData.id}`);
+                        return { faceId, thumbnailDriveId: thumbData.id };
+                    } catch (err) {
+                        console.error(`[Update Faces API] Failed to upload thumbnail for ${faceId}:`, err);
+                        return null;
+                    }
+                })
+            );
+
+            // Filter out failed uploads
+            successfulThumbnails = thumbnailUploads.filter(t => t);
+            console.log(`[Update Faces API] Successfully uploaded ${successfulThumbnails.length} thumbnails`);
+        } else {
+            console.log(`[Update Faces API] No new thumbnails to upload (all faces already have thumbnails)`);
+        }
 
         // Update face storage with thumbnail Drive IDs
         for (const { faceId, thumbnailDriveId } of successfulThumbnails) {

@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
-import { uploadToDrive, findOrCreateFolder } from '../../../lib/googleDrive';
+import { uploadToDrive } from '../../../lib/googleDrive';
 import { savePhoto } from '../../../lib/photoStorage';
 import { applyRateLimit } from '../../../lib/rateLimit';
-import { getFaceById, saveFaceDescriptor } from '../../../lib/faceStorage';
 
 export async function POST(request) {
     // Apply rate limiting (10 uploads per minute per IP)
@@ -16,18 +15,10 @@ export async function POST(request) {
         const file = formData.get('file');
         const folderId = formData.get('folderId') || process.env.GOOGLE_DRIVE_FOLDER_ID;
         const poseId = formData.get('poseId') || 'unknown_pose';
-        const mainFaceId = formData.get('mainFaceId') || 'unknown';
-        const faceIdsStr = formData.get('faceIds') || 'unknown';
-        const faceBoxesStr = formData.get('faceBoxes') || '[]';
 
-        // Extract face thumbnail blobs
-        const faceThumbnailFiles = [];
-        for (const [key, value] of formData.entries()) {
-            if (key.startsWith('faceThumbnail_')) {
-                const faceId = key.replace('faceThumbnail_', '');
-                faceThumbnailFiles.push({ faceId, file: value });
-            }
-        }
+        // Note: Face detection now happens AFTER upload in the new flow
+        // The client uploads the image first, then downloads it back, detects faces,
+        // and calls /api/update-faces with the face data and thumbnails
 
         if (!file) {
             console.error('[Upload API] No file found in request');
@@ -57,42 +48,8 @@ export async function POST(request) {
             driveData = await uploadToDrive(buffer, file.name, folderId);
             console.log(`[Upload API] Drive upload successful. ID: ${driveData.id}`);
 
-            // Upload face thumbnails to Drive in a 'faces' subfolder
-            console.log(`[Upload API] Uploading ${faceThumbnailFiles.length} face thumbnails...`);
-
-            // Find or create 'faces' subfolder
-            const facesFolderId = await findOrCreateFolder('faces', folderId);
-
-            const thumbnailUploads = await Promise.all(
-                faceThumbnailFiles.map(async ({ faceId, file: thumbFile }) => {
-                    try {
-                        const thumbBuffer = Buffer.from(await thumbFile.arrayBuffer());
-                        const thumbData = await uploadToDrive(thumbBuffer, `${faceId}.jpg`, facesFolderId);
-                        console.log(`[Upload API] Thumbnail uploaded for ${faceId}: ${thumbData.id}`);
-                        return { faceId, thumbnailDriveId: thumbData.id };
-                    } catch (err) {
-                        console.error(`[Upload API] Failed to upload thumbnail for ${faceId}:`, err);
-                        return null;
-                    }
-                })
-            );
-
-            // Filter out failed uploads and update face storage with thumbnail IDs
-            const successfulThumbnails = thumbnailUploads.filter(t => t);
-            console.log(`[Upload API] Successfully uploaded ${successfulThumbnails.length} thumbnails`);
-
-            // Update face storage with thumbnail Drive IDs
-            for (const { faceId, thumbnailDriveId } of successfulThumbnails) {
-                const existingFace = getFaceById(faceId);
-                if (existingFace && !existingFace.thumbnailDriveId) {
-                    // Update existing face with thumbnail ID
-                    saveFaceDescriptor(faceId, existingFace.descriptor, {
-                        ...existingFace.metadata,
-                        thumbnailDriveId
-                    });
-                    console.log(`[Upload API] Updated ${faceId} with thumbnail ID: ${thumbnailDriveId}`);
-                }
-            }
+            // Note: Thumbnails are now uploaded via /api/update-faces after face detection
+            // This endpoint only uploads the main photo
 
         } catch (driveErr) {
             console.error('[Upload API] Drive upload failed:', driveErr.message);
@@ -106,23 +63,15 @@ export async function POST(request) {
         // Construct local proxy URL instead of a direct Google Drive link
         const proxyImageUrl = `/api/image/${driveData.id}`;
 
-        // Parse face IDs and boxes
-        const faceIdArray = faceIdsStr.split(',').map(id => id.trim()).filter(id => id);
-        let faceBoxes = [];
-        try {
-            faceBoxes = JSON.parse(faceBoxesStr);
-        } catch (e) {
-            console.warn('[Upload API] Failed to parse face boxes:', e);
-        }
-
+        // In the new upload-first flow, face data is added later via /api/update-faces
         const newPhoto = {
             id: Date.now(),
             name: file.name,
             driveId: driveData.id,
             url: proxyImageUrl,
-            mainFaceId: mainFaceId, // Primary face for filtering/grouping
-            faceIds: faceIdArray, // All faces in the photo
-            faceBoxes: faceBoxes, // Bounding boxes for face cropping
+            mainFaceId: 'unknown', // Will be updated by /api/update-faces
+            faceIds: [], // Will be updated by /api/update-faces
+            faceBoxes: [], // Will be updated by /api/update-faces
             poseId: poseId,
             timestamp: new Date().toISOString()
         };
