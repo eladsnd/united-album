@@ -30,18 +30,27 @@ export async function GET() {
                 }
             }
 
+            // Calculate actual photo count by counting ALL photos where this face appears
+            const photoCount = photos.filter(p => {
+                const faceIds = p.faceIds || [p.mainFaceId || p.faceId];
+                return faceIds.includes(face.faceId);
+            }).length;
+
             return {
                 faceId: face.faceId,
                 faceUrl: faceUrl,
-                photoCount: face.photoCount || 0,
+                photoCount: photoCount,
                 lastSeen: face.lastSeen
             };
         });
 
-        // Sort by photo count (most photos first)
-        faceThumbnails.sort((a, b) => b.photoCount - a.photoCount);
+        // Filter out faces with 0 photos
+        const activeFaces = faceThumbnails.filter(face => face.photoCount > 0);
 
-        return NextResponse.json(faceThumbnails);
+        // Sort by photo count (most photos first)
+        activeFaces.sort((a, b) => b.photoCount - a.photoCount);
+
+        return NextResponse.json(activeFaces);
     } catch (error) {
         console.error('[Face Thumbnails API] Error:', error);
         return NextResponse.json({ error: 'Failed to fetch face thumbnails' }, { status: 500 });

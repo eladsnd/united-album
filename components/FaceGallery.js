@@ -95,7 +95,7 @@ export default function AlbumGallery() {
 
                             {faceThumbnails.slice(faceScrollIndex, faceScrollIndex + 5).map(face => {
                                 const hasError = imageErrors[face.faceId];
-                                const showPlaceholder = !face.faceUrl || hasError;
+                                const hasFaceUrl = face.faceUrl && face.faceUrl !== '#';
 
                                 return (
                                     <button
@@ -103,7 +103,7 @@ export default function AlbumGallery() {
                                         className={`face-thumb ${faceFilter === face.faceId ? 'active' : ''}`}
                                         onClick={() => setFaceFilter(face.faceId)}
                                     >
-                                        {!showPlaceholder ? (
+                                        {hasFaceUrl && !hasError ? (
                                             <img
                                                 src={face.faceUrl}
                                                 alt={`Face ${face.faceId}`}
