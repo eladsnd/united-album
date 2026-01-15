@@ -193,11 +193,13 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
     return (
         <div className="admin-pose-manager">
             <div className="admin-header">
-                <div className="admin-header-content">
-                    <h1 style={{ fontWeight: '400', marginBottom: '0.5rem' }}>
-                        Pose Challenge Manager
-                    </h1>
-                    <div className="admin-badge">Administrator</div>
+                <div className="admin-header-left">
+                    <div className="admin-header-content">
+                        <h1 style={{ fontWeight: '400', marginBottom: '0.5rem' }}>
+                            Pose Challenge Manager
+                        </h1>
+                        <div className="admin-badge">Administrator</div>
+                    </div>
                 </div>
                 <div className="admin-header-actions">
                     <button className="btn" onClick={openAddForm}>
