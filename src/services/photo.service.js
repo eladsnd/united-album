@@ -156,8 +156,14 @@ export class PhotoService {
     console.log(`[PhotoService] Deleting photo ${photoId} (admin: ${isAdmin}, requester: ${requesterId})`);
 
 
-    // 3. Delete from Google Drive
-    await this.driveService.deleteFile(photo.driveId);
+    // 3. Delete from Google Drive (with error handling)
+    try {
+      await this.driveService.deleteFile(photo.driveId);
+      console.log(`[PhotoService] Successfully deleted from Drive: ${photo.driveId}`);
+    } catch (driveError) {
+      // Log but don't fail if file already deleted from Drive
+      console.warn(`[PhotoService] Drive delete failed (file may already be deleted): ${driveError.message}`);
+    }
 
     // 4. Delete photo metadata
     await this.photoRepository.delete(photoId);
@@ -172,7 +178,12 @@ export class PhotoService {
       for (const faceId of orphanedFaces) {
         const face = await this.faceService.getFace(faceId);
         if (face?.thumbnailDriveId) {
-          await this.driveService.deleteFile(face.thumbnailDriveId);
+          try {
+            await this.driveService.deleteFile(face.thumbnailDriveId);
+            console.log(`[PhotoService] Deleted orphaned face thumbnail: ${faceId}`);
+          } catch (thumbError) {
+            console.warn(`[PhotoService] Failed to delete face thumbnail ${faceId}: ${thumbError.message}`);
+          }
         }
       }
     }
