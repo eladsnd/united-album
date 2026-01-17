@@ -20,17 +20,36 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 /**
  * Generate a URL-safe slug from a title
+ * Supports Unicode characters (Hebrew, Arabic, Chinese, etc.)
  *
  * @param {string} title - Title to slugify
- * @returns {string} - URL-safe slug
+ * @returns {string} - URL-safe slug (guaranteed non-empty)
  */
 function slugify(title) {
-  return title
+  // Normalize unicode and remove diacritics
+  const normalized = title
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s-]/g, '') // Remove non-word chars except spaces and hyphens
-    .replace(/[\s_-]+/g, '-') // Replace spaces, underscores with single hyphen
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, ''); // Remove combining diacritical marks
+
+  // Keep Unicode letters, numbers, spaces, and hyphens
+  // \p{L} = any letter in any language
+  // \p{N} = any numeric character
+  const slug = normalized
+    .replace(/[^\p{L}\p{N}\s-]/gu, '') // Unicode-aware: keep letters/numbers
+    .replace(/[\s_-]+/g, '-') // Replace whitespace with single hyphen
     .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+
+  // Fallback: if slug is empty (e.g., all special characters), use timestamp
+  if (!slug || slug.length === 0) {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 7);
+    console.warn(`[Pose API] Title "${title}" produced empty slug, using fallback: pose-${timestamp}-${random}`);
+    return `pose-${timestamp}-${random}`;
+  }
+
+  return slug;
 }
 
 /**

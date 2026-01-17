@@ -131,6 +131,7 @@ export async function detectFaceInBrowser(imageFile) {
         // Extract face thumbnails from the original image canvas
         const faceThumbnails = await Promise.all(
             boxes.map(async (box, index) => {
+                let cropCanvas = null;
                 try {
                     // Add 20% padding around face
                     const padding = Math.round(Math.max(box.width, box.height) * 0.2);
@@ -140,7 +141,7 @@ export async function detectFaceInBrowser(imageFile) {
                     const cropH = Math.min(box.height + padding * 2, canvas.height - cropY);
 
                     // Create a temporary canvas for cropping
-                    const cropCanvas = document.createElement('canvas');
+                    cropCanvas = document.createElement('canvas');
                     cropCanvas.width = cropW;
                     cropCanvas.height = cropH;
                     const cropCtx = cropCanvas.getContext('2d');
@@ -153,8 +154,12 @@ export async function detectFaceInBrowser(imageFile) {
                     );
 
                     // Convert to blob (JPEG, 90% quality)
-                    const blob = await new Promise(resolve => {
-                        cropCanvas.toBlob(resolve, 'image/jpeg', 0.9);
+                    const blob = await new Promise((resolve, reject) => {
+                        cropCanvas.toBlob(
+                            (blob) => blob ? resolve(blob) : reject(new Error('Blob creation failed')),
+                            'image/jpeg',
+                            0.9
+                        );
                     });
 
                     return {
@@ -165,9 +170,19 @@ export async function detectFaceInBrowser(imageFile) {
                 } catch (error) {
                     console.error(`[Client Face Detection] Failed to extract thumbnail for face ${index}:`, error);
                     return null;
+                } finally {
+                    // Clean up temporary canvas
+                    if (cropCanvas) {
+                        cropCanvas.width = 0;
+                        cropCanvas.height = 0;
+                    }
                 }
             })
         );
+
+        // Clean up main canvas after all thumbnails extracted
+        canvas.width = 0;
+        canvas.height = 0;
 
         console.log(`[Client Face Detection] Main face: ${mainFaceId}, All faces: ${faceIds.join(', ')}`);
         console.log(`[Client Face Detection] Extracted ${faceThumbnails.filter(t => t).length} face thumbnails`);

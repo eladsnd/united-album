@@ -12,6 +12,7 @@ export default function UploadSection({ folderId, poseTitle }) {
     const [modelsReady, setModelsReady] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [retryCount, setRetryCount] = useState(0);
+    const [isUploading, setIsUploading] = useState(false); // Prevent duplicate uploads
     const toast = useToast();
 
     // Get or create uploader session ID
@@ -110,8 +111,14 @@ export default function UploadSection({ folderId, poseTitle }) {
 
     const handleUpload = async (e) => {
         const file = e.target.files[0];
-        if (!file) return;
+        if (!file || isUploading) {
+            if (isUploading) {
+                console.log('[Upload] Upload already in progress, ignoring duplicate request');
+            }
+            return;
+        }
 
+        setIsUploading(true);
         setStatus('analyzing');
         setUploadedUrl(null);
         setErrorMessage('');
@@ -268,6 +275,8 @@ export default function UploadSection({ folderId, poseTitle }) {
             setErrorMessage(errorMsg);
             setStatus('error');
             toast.showError(`Upload failed: ${errorMsg}`);
+        } finally {
+            setIsUploading(false);
         }
     };
 
@@ -284,7 +293,13 @@ export default function UploadSection({ folderId, poseTitle }) {
                     <Upload size={32} />
                     <span className="upload-text">Upload your {poseTitle || 'Challenge'} Photo</span>
                     <span className="upload-subtext">Click to browse or take a photo</span>
-                    <input type="file" onChange={handleUpload} style={{ display: 'none' }} accept="image/*" />
+                    <input
+                        type="file"
+                        onChange={handleUpload}
+                        disabled={isUploading}
+                        style={{ display: 'none' }}
+                        accept="image/*"
+                    />
                 </label>
             )}
 

@@ -25,19 +25,59 @@ export function calculateSmartCrop(faceBoxes, imageDimensions, options = {}) {
 
     console.log('[Smart Crop] Starting calculation with', faceBoxes?.length, 'faces, image:', imageDimensions);
 
-    // If no faces detected, return null (no crop)
-    if (!faceBoxes || faceBoxes.length === 0) {
-        console.log('[Smart Crop] No faces detected, skipping crop');
+    // Validate image dimensions
+    if (!imageDimensions ||
+        typeof imageDimensions.width !== 'number' ||
+        typeof imageDimensions.height !== 'number' ||
+        imageDimensions.width <= 0 ||
+        imageDimensions.height <= 0 ||
+        !isFinite(imageDimensions.width) ||
+        !isFinite(imageDimensions.height)) {
+        console.warn('[Smart Crop] Invalid image dimensions:', imageDimensions);
         return null;
     }
+
+    // Validate face boxes array
+    if (!Array.isArray(faceBoxes) || faceBoxes.length === 0) {
+        console.log('[Smart Crop] No valid face boxes array');
+        return null;
+    }
+
+    // Validate and filter each face box
+    const validBoxes = faceBoxes.filter(box => {
+        if (!box || typeof box !== 'object') {
+            console.warn('[Smart Crop] Invalid box object:', box);
+            return false;
+        }
+
+        const { x, y, width, height } = box;
+
+        // Check all required properties exist and are valid numbers
+        if (typeof x !== 'number' || !isFinite(x) ||
+            typeof y !== 'number' || !isFinite(y) ||
+            typeof width !== 'number' || !isFinite(width) || width <= 0 ||
+            typeof height !== 'number' || !isFinite(height) || height <= 0) {
+            console.warn('[Smart Crop] Invalid box coordinates:', box);
+            return false;
+        }
+
+        return true;
+    });
+
+    if (validBoxes.length === 0) {
+        console.warn('[Smart Crop] No valid face boxes after filtering');
+        return null;
+    }
+
+    console.log(`[Smart Crop] Validated ${validBoxes.length}/${faceBoxes.length} face boxes`);
 
     const { width: imgWidth, height: imgHeight } = imageDimensions;
 
     // Calculate bounding box that contains all faces
-    const allFacesBounds = calculateBoundingBox(faceBoxes);
+    const allFacesBounds = calculateBoundingBox(validBoxes);
 
     // Calculate average face height for padding calculation
-    const avgFaceHeight = faceBoxes.reduce((sum, box) => sum + box.height, 0) / faceBoxes.length;
+    const avgFaceHeight = validBoxes.reduce((sum, box) => sum + box.height, 0) / validBoxes.length;
 
     // Calculate padding (either based on face size or minimum)
     const padding = Math.max(
@@ -109,7 +149,7 @@ export function calculateSmartCrop(faceBoxes, imageDimensions, options = {}) {
             originalSize: `${imgWidth}x${imgHeight}`,
             cropSize: `${Math.round(cropWidth)}x${Math.round(cropHeight)}`,
             cropPercentage: (cropPercentage * 100).toFixed(1) + '%',
-            facesIncluded: faceBoxes.length,
+            facesIncluded: validBoxes.length,
             aspectRatio: (cropWidth / cropHeight).toFixed(2),
         }
     };
@@ -158,39 +198,53 @@ function calculateBoundingBox(faceBoxes) {
  * @returns {Promise<Blob>} Cropped image as blob
  */
 export async function applyCrop(image, cropArea, quality = 0.95) {
-    return new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
 
+    try {
         // Set canvas size to crop dimensions
         canvas.width = cropArea.width;
         canvas.height = cropArea.height;
 
         // Handle File input
         if (image instanceof File) {
-            const img = new Image();
-            const reader = new FileReader();
+            const blob = await new Promise((resolve, reject) => {
+                const img = new Image();
+                const reader = new FileReader();
 
-            reader.onload = (e) => {
-                img.onload = () => {
-                    // Draw cropped portion
-                    ctx.drawImage(
-                        img,
-                        cropArea.x, cropArea.y, cropArea.width, cropArea.height,
-                        0, 0, cropArea.width, cropArea.height
-                    );
+                reader.onload = (e) => {
+                    img.onload = () => {
+                        try {
+                            // Draw cropped portion
+                            ctx.drawImage(
+                                img,
+                                cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+                                0, 0, cropArea.width, cropArea.height
+                            );
 
-                    canvas.toBlob(
-                        (blob) => resolve(blob),
-                        'image/jpeg',
-                        quality
-                    );
+                            canvas.toBlob(
+                                (blob) => {
+                                    if (blob) {
+                                        resolve(blob);
+                                    } else {
+                                        reject(new Error('Failed to create blob from canvas'));
+                                    }
+                                },
+                                'image/jpeg',
+                                quality
+                            );
+                        } catch (drawError) {
+                            reject(drawError);
+                        }
+                    };
+                    img.onerror = () => reject(new Error('Failed to load image'));
+                    img.src = e.target.result;
                 };
-                img.onerror = reject;
-                img.src = e.target.result;
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(image);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(image);
+            });
+
+            return blob;
         }
         // Handle HTMLImageElement
         else {
@@ -200,13 +254,28 @@ export async function applyCrop(image, cropArea, quality = 0.95) {
                 0, 0, cropArea.width, cropArea.height
             );
 
-            canvas.toBlob(
-                (blob) => resolve(blob),
-                'image/jpeg',
-                quality
-            );
+            const blob = await new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    (blob) => {
+                        if (blob) {
+                            resolve(blob);
+                        } else {
+                            reject(new Error('Failed to create blob from canvas'));
+                        }
+                    },
+                    'image/jpeg',
+                    quality
+                );
+            });
+
+            return blob;
         }
-    });
+    } finally {
+        // Explicitly clean up canvas to prevent memory leaks
+        canvas.width = 0;
+        canvas.height = 0;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
 }
 
 /**
