@@ -16,7 +16,21 @@ import { AppError } from '@/src/errors/app-error';
 async function updateFacesHandler(request) {
     const formData = await request.formData();
 
-    const photoId = parseInt(formData.get('photoId'));
+    // Validate photo ID with proper error handling
+    const photoIdStr = formData.get('photoId');
+    if (!photoIdStr) {
+        throw new AppError('Photo ID is required', 400, 'PHOTO_ID_MISSING');
+    }
+
+    const photoId = parseInt(photoIdStr, 10);
+    if (isNaN(photoId) || photoId <= 0) {
+        throw new AppError(
+            `Invalid photo ID: "${photoIdStr}". Must be a positive integer.`,
+            400,
+            'INVALID_PHOTO_ID'
+        );
+    }
+
     const driveId = formData.get('driveId');
     const faceIdsStr = formData.get('faceIds') || '';
     const mainFaceId = formData.get('mainFaceId') || 'unknown';
@@ -29,6 +43,20 @@ async function updateFacesHandler(request) {
         faceBoxes = JSON.parse(faceBoxesStr);
     } catch (e) {
         console.warn('[Update Faces API] Failed to parse face boxes:', e);
+        throw new AppError(
+            'Invalid face boxes format. Must be valid JSON array.',
+            400,
+            'INVALID_FACE_BOXES'
+        );
+    }
+
+    // Validate that face IDs and boxes arrays match in length
+    if (faceIdArray.length > 0 && faceBoxes.length > 0 && faceIdArray.length !== faceBoxes.length) {
+        throw new AppError(
+            `Face data mismatch: ${faceIdArray.length} face IDs but ${faceBoxes.length} face boxes. Arrays must have equal length.`,
+            400,
+            'FACE_DATA_MISMATCH'
+        );
     }
 
     // Extract face thumbnail blobs from FormData

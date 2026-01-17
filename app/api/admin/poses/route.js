@@ -126,6 +126,17 @@ async function saveImageFile(file, poseId) {
     const filename = `${poseId}.${ext}`;
     const filepath = path.join(CHALLENGES_IMAGE_DIR, filename);
 
+    // Security: Validate that resolved path stays within challenges directory
+    // Prevents path traversal attacks (e.g., poseId = "../../../etc/passwd")
+    const resolvedPath = path.resolve(filepath);
+    const basePath = path.resolve(CHALLENGES_IMAGE_DIR);
+
+    if (!resolvedPath.startsWith(basePath + path.sep) && resolvedPath !== basePath) {
+        throw new Error(
+            `Security: Path traversal detected. Pose ID "${poseId}" attempted to write outside challenges directory.`
+        );
+    }
+
     // Convert file to buffer and save
     const buffer = Buffer.from(await file.arrayBuffer());
     fs.writeFileSync(filepath, buffer);
