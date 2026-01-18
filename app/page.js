@@ -6,16 +6,34 @@ import UploadSection from '../components/UploadSection';
 import MobileAccessQR from '../components/MobileAccessQR';
 import AlbumGallery from '../components/FaceGallery';
 import Sidebar from '../components/Sidebar';
-import challengesData from '../data/challenges.json';
 
 export default function Home() {
     const [activeSection, setActiveSection] = useState('challenge');
     const [currentIndex, setCurrentIndex] = useState(-1);
+    const [challengesData, setChallengesData] = useState([]);
+    const [loading, setLoading] = useState(true);
 
+    // Fetch challenges from database API
     useEffect(() => {
-        // Pick a random starting index on load
-        const randomIndex = Math.floor(Math.random() * challengesData.length);
-        setCurrentIndex(randomIndex);
+        async function fetchChallenges() {
+            try {
+                const response = await fetch('/api/admin/poses');
+                const data = await response.json();
+                if (data.success && data.data) {
+                    setChallengesData(data.data);
+                    // Pick a random starting index after data is loaded
+                    if (data.data.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * data.data.length);
+                        setCurrentIndex(randomIndex);
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to fetch challenges:', error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchChallenges();
     }, []);
 
     const nextChallenge = () => {
@@ -40,7 +58,19 @@ export default function Home() {
                             <p style={{ fontStyle: 'italic', color: '#d4af37' }}>Capture your favorite moments</p>
                         </header>
 
-                        <div className="pose-carousel-container">
+                        {loading ? (
+                            <div style={{ textAlign: 'center', padding: '4rem', color: '#d4af37' }}>
+                                Loading pose challenges...
+                            </div>
+                        ) : challengesData.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '4rem' }}>
+                                <p>No pose challenges available yet.</p>
+                                <p style={{ fontSize: '0.9rem', opacity: 0.7, marginTop: '1rem' }}>
+                                    Admin can add poses at /admin
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="pose-carousel-container">
                             <h2 style={{ fontWeight: '400', marginBottom: '3rem', textAlign: 'center', letterSpacing: '1px' }}>Pick a Pose Challenge</h2>
 
                             <div className="carousel-wrapper">
@@ -91,6 +121,8 @@ export default function Home() {
                                 <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
                                 <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
                             </div>
+                        )}
+                        </div>
                         )}
                     </section>
                 )}
