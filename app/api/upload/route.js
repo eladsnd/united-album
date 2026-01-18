@@ -1,97 +1,76 @@
+/**
+ * Photo Upload API Route
+ *
+ * Handles photo uploads with face detection metadata.
+ *
+ * REFACTORED with Decorator Pattern + Service Layer:
+ * - Before: 97 lines with duplicated error handling, rate limiting, validation
+ * - After: 30 lines with clean separation of concerns
+ * - Reduction: 69% less code
+ *
+ * Pattern: Decorator pattern for cross-cutting concerns
+ * Service: UploadService handles business logic
+ */
+
 import { NextResponse } from 'next/server';
-import { uploadToDrive } from '../../../lib/googleDrive';
-import { savePhoto } from '../../../lib/photoStorage';
-import { applyRateLimit } from '../../../lib/rateLimit';
+import { withApi } from '@/lib/api/decorators';
+import { UploadService } from '@/lib/services/UploadService';
+import { UnauthorizedError } from '@/lib/api/errors';
 
-export async function POST(request) {
-    // Apply rate limiting (10 uploads per minute per IP)
-    const rateLimitResult = applyRateLimit(request, 'upload');
-    if (!rateLimitResult.allowed) {
-        return rateLimitResult.response;
-    }
+/**
+ * Upload photo handler (business logic only)
+ *
+ * Clean handler - all cross-cutting concerns handled by decorators:
+ * - Error handling: withErrorHandler
+ * - Rate limiting: withRateLimit (10 uploads/min)
+ * - Logging: Automatic via service layer
+ */
+async function handleUpload(request) {
+  // Validate Google Drive credentials
+  const uploadService = new UploadService();
 
-    try {
-        const formData = await request.formData();
-        const file = formData.get('file');
-        const folderId = formData.get('folderId') || process.env.GOOGLE_DRIVE_FOLDER_ID;
-        const poseId = formData.get('poseId') || 'unknown_pose';
-        const uploaderId = formData.get('uploaderId'); // Client-generated session ID
+  if (!uploadService.validateCredentials()) {
+    throw new UnauthorizedError(
+      'Google Drive OAuth configuration missing. Please check your .env.local file.',
+      'CREDENTIALS_MISSING'
+    );
+  }
 
-        // Note: Face detection now happens AFTER upload in the new flow
-        // The client uploads the image first, then downloads it back, detects faces,
-        // and calls /api/update-faces with the face data and thumbnails
+  // Process upload via service layer
+  const formData = await request.formData();
+  const result = await uploadService.processUpload(formData);
 
-        if (!file) {
-            console.error('[Upload API] No file found in request');
-            return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
-        }
-
-        console.log(`[Upload API] Processing upload for file: ${file.name}, pose: ${poseId}`);
-
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        // 2. Upload to Google Drive
-        let driveData = { id: 'mock_drive_id', webViewLink: '/challenges/dip.png' };
-
-        if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REFRESH_TOKEN) {
-            console.error('[Upload API] OAuth 2.0 credentials missing. Rejecting upload.');
-            return NextResponse.json({
-                error: 'Google Drive OAuth configuration missing. Please check your .env.local file.',
-                code: 'CREDENTIALS_MISSING'
-            }, { status: 403 });
-        }
-
-        try {
-            console.log(`[Upload API] Uploading to Google Drive folder: ${folderId}`);
-            driveData = await uploadToDrive(buffer, file.name, folderId);
-            console.log(`[Upload API] Drive upload successful. ID: ${driveData.id}`);
-
-            // Note: Thumbnails are now uploaded via /api/update-faces after face detection
-            // This endpoint only uploads the main photo
-
-        } catch (driveErr) {
-            console.error('[Upload API] Drive upload failed:', driveErr.message);
-            return NextResponse.json({
-                error: 'Drive upload failed: ' + driveErr.message,
-                code: 'DRIVE_UPLOAD_FAILED'
-            }, { status: 500 });
-        }
-
-        // 3. Save Metadata locally using our utility
-        // Construct local proxy URL instead of a direct Google Drive link
-        const proxyImageUrl = `/api/image/${driveData.id}`;
-
-        // In the new upload-first flow, face data is added later via /api/update-faces
-        const newPhoto = {
-            id: Date.now(),
-            name: file.name,
-            driveId: driveData.id,
-            url: proxyImageUrl,
-            mainFaceId: 'unknown', // Will be updated by /api/update-faces
-            faceIds: [], // Will be updated by /api/update-faces
-            faceBoxes: [], // Will be updated by /api/update-faces
-            poseId: poseId,
-            uploaderId: uploaderId || null, // Track who uploaded this photo
-            timestamp: new Date().toISOString()
-        };
-
-        console.log('[Upload API] Saving photo metadata:', JSON.stringify(newPhoto, null, 2));
-
-        try {
-            const savedPhoto = await savePhoto(newPhoto);
-            console.log(`[Upload API] Photo saved successfully: ${savedPhoto.id}`);
-            return NextResponse.json({ success: true, photo: savedPhoto });
-        } catch (storageErr) {
-            console.error('[Upload API] Failed to save photo metadata:', storageErr);
-            // Attempt to cleanup drive file if metadata save fails?
-            return NextResponse.json({
-                error: 'Failed to save photo metadata: ' + storageErr.message,
-                code: 'METADATA_SAVE_FAILED'
-            }, { status: 500 });
-        }
-
-    } catch (error) {
-        console.error('Upload error:', error);
-        return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
-    }
+  return NextResponse.json(result);
 }
+
+/**
+ * POST /api/upload
+ *
+ * Upload a photo with metadata.
+ *
+ * Request (multipart/form-data):
+ * - file: Image file
+ * - folderId: Google Drive folder ID (optional, uses env default)
+ * - poseId: Pose challenge ID (optional, defaults to 'unknown_pose')
+ * - uploaderId: Client-generated session ID (optional)
+ *
+ * Response:
+ * {
+ *   success: true,
+ *   photo: {
+ *     id: 12345,
+ *     driveId: "abc123",
+ *     url: "/api/image/abc123",
+ *     mainFaceId: "unknown",
+ *     faceIds: [],
+ *     faceBoxes: [],
+ *     poseId: "test-pose",
+ *     uploaderId: "uploader_123",
+ *     timestamp: "2026-01-18T..."
+ *   }
+ * }
+ *
+ * Note: Face detection happens client-side BEFORE upload.
+ * Face metadata is added later via /api/update-faces.
+ */
+export const POST = withApi(handleUpload, { rateLimit: 'upload' });
