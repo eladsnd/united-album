@@ -1,8 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getFileStream } from '../../../../lib/googleDrive';
 import { getPhotos } from '../../../../lib/photoStorage';
+import { applyRateLimit } from '../../../../lib/rateLimit';
 
 export async function GET(request, { params }) {
+    // Rate limit downloads to prevent API quota exhaustion
+    const rateLimitResult = applyRateLimit(request, 'download');
+
+    if (!rateLimitResult.allowed) {
+        return rateLimitResult.response;
+    }
+
     const { driveId } = await params;
     console.log('[Download API] Starting download for driveId:', driveId);
 

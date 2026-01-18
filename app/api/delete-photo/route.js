@@ -5,12 +5,15 @@ import { withLogging } from '@/src/interceptors/logging.interceptor';
 import { validateAndTransform } from '@/src/validators/dto-validator';
 import { DeletePhotoDto } from '@/src/dto/upload-photo.dto';
 import { isAdminAuthenticated } from '../../../lib/adminAuth';
+import { applyRateLimit } from '../../../lib/rateLimit';
+import { AppError } from '@/src/errors/app-error';
 
 /**
  * DELETE /api/delete-photo?photoId=123&uploaderId=xxx
  * Delete a photo from the album AND Google Drive
  *
  * Security: Only the uploader can delete their own photos, OR admin can delete any photo
+ * Rate limited to 10 deletes per minute to prevent deletion spam/DoS
  *
  * Refactored to use NestJS-style architecture:
  * - DTOs for validation
@@ -19,6 +22,17 @@ import { isAdminAuthenticated } from '../../../lib/adminAuth';
  * - Automatic orphaned face cleanup
  */
 async function deletePhotoHandler(request) {
+    // CRITICAL SECURITY: Rate limit delete operations to prevent DoS
+    const rateLimitResult = applyRateLimit(request, 'delete');
+
+    if (!rateLimitResult.allowed) {
+        throw new AppError(
+            'Too many delete requests. Please slow down.',
+            429,
+            'RATE_LIMIT_EXCEEDED'
+        );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // Check if user is admin

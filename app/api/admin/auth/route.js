@@ -3,6 +3,8 @@
  *
  * POST /api/admin/auth
  * Authenticates admin users and returns session token
+ *
+ * SECURITY: Rate limited to 5 attempts per minute to prevent brute-force attacks
  */
 
 import { NextResponse } from 'next/server';
@@ -11,6 +13,7 @@ import {
   generateAdminToken,
   getTokenExpiryMs,
 } from '@/lib/adminAuth';
+import { applyRateLimit } from '@/lib/rateLimit';
 
 /**
  * POST /api/admin/auth
@@ -38,6 +41,14 @@ import {
  */
 export async function POST(request) {
   try {
+    // CRITICAL SECURITY: Rate limit login attempts to prevent brute-force attacks
+    const rateLimitResult = applyRateLimit(request, 'auth');
+
+    if (!rateLimitResult.allowed) {
+      console.warn('[Admin Auth] Rate limit exceeded for IP:', request.headers.get('x-forwarded-for') || 'unknown');
+      return rateLimitResult.response;
+    }
+
     // Parse request body
     const body = await request.json();
     const { password } = body;

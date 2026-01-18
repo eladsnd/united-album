@@ -17,14 +17,64 @@ export async function POST(request) {
     try {
         const { faceId, descriptor, metadata } = await request.json();
 
-        if (!faceId || !descriptor) {
+        // 1. Validate faceId format (prevent XSS)
+        if (!faceId || typeof faceId !== 'string') {
             return NextResponse.json(
-                { error: 'faceId and descriptor are required' },
+                { error: 'Invalid faceId. Must be a string.' },
                 { status: 400 }
             );
         }
 
-        const savedFace = saveFaceDescriptor(faceId, descriptor, metadata);
+        // SECURITY: Only allow person_N format (prevent XSS injection)
+        if (!/^person_\d+$/.test(faceId)) {
+            return NextResponse.json(
+                { error: 'Invalid faceId format. Expected: person_N (e.g., person_1, person_2)' },
+                { status: 400 }
+            );
+        }
+
+        // 2. Validate descriptor is array of exactly 128 numbers
+        if (!Array.isArray(descriptor)) {
+            return NextResponse.json(
+                { error: 'Descriptor must be an array' },
+                { status: 400 }
+            );
+        }
+
+        if (descriptor.length !== 128) {
+            return NextResponse.json(
+                { error: `Descriptor must have exactly 128 dimensions (got ${descriptor.length})` },
+                { status: 400 }
+            );
+        }
+
+        // Validate all descriptor values are finite numbers
+        const validDescriptor = descriptor.every(
+            val => typeof val === 'number' && isFinite(val) && !isNaN(val)
+        );
+
+        if (!validDescriptor) {
+            return NextResponse.json(
+                { error: 'Descriptor must contain only finite numbers' },
+                { status: 400 }
+            );
+        }
+
+        // 3. Sanitize metadata (prevent data corruption and XSS)
+        const sanitizedMetadata = metadata ? {
+            // Only allow safe numeric photoCount
+            photoCount: typeof metadata.photoCount === 'number' && isFinite(metadata.photoCount)
+                ? Math.max(0, Math.floor(metadata.photoCount))
+                : 0,
+            // Safe ISO timestamp
+            timestamp: metadata.timestamp || new Date().toISOString(),
+            // DO NOT allow arbitrary metadata fields that could contain scripts/HTML
+        } : {
+            photoCount: 0,
+            timestamp: new Date().toISOString()
+        };
+
+        const savedFace = saveFaceDescriptor(faceId, descriptor, sanitizedMetadata);
 
         return NextResponse.json({
             success: true,
