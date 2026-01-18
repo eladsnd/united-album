@@ -58,7 +58,7 @@ export async function DELETE(request) {
         }
 
         // Delete from photos.json
-        const success = deletePhoto(photo.driveId);
+        const success = await deletePhoto(photo.driveId);
 
         if (!success) {
             return NextResponse.json({ error: 'Failed to delete photo metadata' }, { status: 500 });

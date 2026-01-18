@@ -96,7 +96,7 @@ export async function POST(request) {
         }
 
         // Update photo metadata with face data
-        const updatedPhoto = updatePhoto(photoId, {
+        const updatedPhoto = await updatePhoto(photoId, {
             mainFaceId,
             faceIds: faceIdArray,
             faceBoxes

@@ -78,7 +78,7 @@ export async function POST(request) {
         console.log('[Upload API] Saving photo metadata:', JSON.stringify(newPhoto, null, 2));
 
         try {
-            const savedPhoto = savePhoto(newPhoto);
+            const savedPhoto = await savePhoto(newPhoto);
             console.log(`[Upload API] Photo saved successfully: ${savedPhoto.id}`);
             return NextResponse.json({ success: true, photo: savedPhoto });
         } catch (storageErr) {
