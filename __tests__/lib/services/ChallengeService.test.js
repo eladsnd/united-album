@@ -6,8 +6,6 @@
  */
 
 import { prismaMock } from '../../prismaMock.js';
-import fs from 'fs';
-import path from 'path';
 
 // Mock Prisma client BEFORE importing repositories and services
 jest.mock('../../../lib/prisma.js', () => ({
@@ -15,11 +13,15 @@ jest.mock('../../../lib/prisma.js', () => ({
   default: require('../../prismaMock.js').prismaMock,
 }));
 
+// Mock Google Drive operations
+jest.mock('../../../lib/googleDrive.js', () => ({
+  uploadToDrive: jest.fn(),
+  findOrCreateFolder: jest.fn(),
+}));
+
 import { ChallengeService } from '../../../lib/services/ChallengeService.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../../lib/api/errors.js';
-
-// Mock filesystem operations
-jest.mock('fs');
+import { uploadToDrive, findOrCreateFolder } from '../../../lib/googleDrive.js';
 
 describe('ChallengeService', () => {
   let challengeService;
@@ -71,8 +73,13 @@ describe('ChallengeService', () => {
 
     describe('Successful creation', () => {
       beforeEach(() => {
-        fs.existsSync.mockReturnValue(true);
-        fs.writeFileSync.mockImplementation(() => {});
+        // Mock Google Drive operations
+        findOrCreateFolder.mockResolvedValue('challenges_folder_123');
+        uploadToDrive.mockResolvedValue({
+          id: 'drive_image_123',
+          webViewLink: 'https://drive.google.com/file/d/drive_image_123',
+        });
+        process.env.GOOGLE_DRIVE_FOLDER_ID = 'parent_folder_123';
       });
 
       it('should create new pose with valid data', async () => {
@@ -89,7 +96,7 @@ describe('ChallengeService', () => {
           id: 'test-pose',
           title: 'Test Pose',
           instruction: 'Do the test pose',
-          image: '/challenges/test-pose.png',
+          image: 'drive_image_123',
           folderId: 'folder123',
         });
 
@@ -97,13 +104,14 @@ describe('ChallengeService', () => {
 
         expect(result.id).toBe('test-pose');
         expect(result.title).toBe('Test Pose');
-        expect(fs.writeFileSync).toHaveBeenCalled();
+        expect(findOrCreateFolder).toHaveBeenCalledWith('challenges', 'folder123');
+        expect(uploadToDrive).toHaveBeenCalled();
         expect(prismaMock.challenge.create).toHaveBeenCalledWith({
           data: expect.objectContaining({
             id: 'test-pose',
             title: 'Test Pose',
             instruction: 'Do the test pose',
-            image: '/challenges/test-pose.png',
+            image: 'drive_image_123',
           }),
         });
       });
@@ -119,11 +127,14 @@ describe('ChallengeService', () => {
         prismaMock.challenge.findUnique.mockResolvedValue(null);
         prismaMock.challenge.create.mockResolvedValue({
           id: 'test-pose',
+          image: 'drive_image_123',
           folderId: null,
         });
 
         const result = await challengeService.createPose(poseData);
 
+        // Should use default environment folder ID when folderId not provided
+        expect(findOrCreateFolder).toHaveBeenCalledWith('challenges', 'parent_folder_123');
         expect(prismaMock.challenge.create).toHaveBeenCalledWith({
           data: expect.objectContaining({
             folderId: null,
@@ -154,25 +165,30 @@ describe('ChallengeService', () => {
         });
       });
 
-      it('should create challenges directory if it doesn\'t exist', async () => {
-        fs.existsSync.mockReturnValue(false);
-        fs.mkdirSync.mockImplementation(() => {});
-
+      it('should upload image to Google Drive challenges folder', async () => {
         const mockFile = createMockFile();
         const poseData = {
           title: 'Test',
           instruction: 'Test',
           image: mockFile,
+          folderId: 'custom_folder_456',
         };
 
         prismaMock.challenge.findUnique.mockResolvedValue(null);
-        prismaMock.challenge.create.mockResolvedValue({ id: 'test' });
+        prismaMock.challenge.create.mockResolvedValue({
+          id: 'test',
+          image: 'drive_image_123',
+        });
 
         await challengeService.createPose(poseData);
 
-        expect(fs.mkdirSync).toHaveBeenCalledWith(
-          expect.stringContaining('challenges'),
-          { recursive: true }
+        // Should find/create challenges subfolder in custom folder
+        expect(findOrCreateFolder).toHaveBeenCalledWith('challenges', 'custom_folder_456');
+        // Should upload file to Drive
+        expect(uploadToDrive).toHaveBeenCalledWith(
+          expect.any(Buffer),
+          'test.png',
+          'challenges_folder_123'
         );
       });
     });
@@ -211,7 +227,6 @@ describe('ChallengeService', () => {
       });
 
       it('should throw ValidationError for invalid file type', async () => {
-        fs.existsSync.mockReturnValue(true);
         const mockFile = createMockFile('test.pdf', 'application/pdf');
 
         prismaMock.challenge.findUnique.mockResolvedValue(null);
@@ -224,7 +239,6 @@ describe('ChallengeService', () => {
       });
 
       it('should throw ValidationError for file size exceeding 5MB', async () => {
-        fs.existsSync.mockReturnValue(true);
         const mockFile = createMockFile('test.png', 'image/png', 6 * 1024 * 1024); // 6MB
 
         prismaMock.challenge.findUnique.mockResolvedValue(null);
@@ -277,8 +291,13 @@ describe('ChallengeService', () => {
     };
 
     beforeEach(() => {
-      fs.existsSync.mockReturnValue(true);
-      fs.writeFileSync.mockImplementation(() => {});
+      // Mock Google Drive operations for update tests
+      findOrCreateFolder.mockResolvedValue('challenges_folder_123');
+      uploadToDrive.mockResolvedValue({
+        id: 'drive_image_updated_456',
+        webViewLink: 'https://drive.google.com/file/d/drive_image_updated_456',
+      });
+      process.env.GOOGLE_DRIVE_FOLDER_ID = 'parent_folder_123';
     });
 
     describe('Successful updates', () => {
@@ -329,15 +348,15 @@ describe('ChallengeService', () => {
         prismaMock.challenge.findUnique.mockResolvedValue({ id: 'test-pose' });
         prismaMock.challenge.update.mockResolvedValue({
           id: 'test-pose',
-          image: '/challenges/test-pose.png',
+          image: 'drive_image_updated_456',
         });
 
         await challengeService.updatePose('test-pose', { image: mockFile });
 
-        expect(fs.writeFileSync).toHaveBeenCalled();
+        expect(uploadToDrive).toHaveBeenCalled();
         expect(prismaMock.challenge.update).toHaveBeenCalledWith({
           where: { id: 'test-pose' },
-          data: { image: '/challenges/test-pose.png' },
+          data: { image: 'drive_image_updated_456' },
         });
       });
 
@@ -398,17 +417,17 @@ describe('ChallengeService', () => {
         });
       });
 
-      it('should not delete image file (preservation)', async () => {
+      it('should preserve image file in Google Drive (not deleted)', async () => {
         prismaMock.challenge.delete.mockResolvedValue({
           id: 'test-pose',
-          image: '/challenges/test-pose.png',
+          image: 'drive_image_123',
         });
 
-        await challengeService.deletePose('test-pose');
+        const result = await challengeService.deletePose('test-pose');
 
-        // File system operations should NOT be called for deletion
-        expect(fs.unlinkSync).not.toHaveBeenCalled();
-        expect(fs.rmSync).not.toHaveBeenCalled();
+        // Image file in Google Drive should NOT be deleted
+        // Only database record is removed
+        expect(result.note).toContain('Image file preserved');
       });
     });
 
@@ -440,8 +459,13 @@ describe('ChallengeService', () => {
 
   describe('_slugify() (via createPose)', () => {
     beforeEach(() => {
-      fs.existsSync.mockReturnValue(true);
-      fs.writeFileSync.mockImplementation(() => {});
+      // Mock Google Drive operations for slug tests
+      findOrCreateFolder.mockResolvedValue('challenges_folder_123');
+      uploadToDrive.mockResolvedValue({
+        id: 'drive_slug_test_789',
+        webViewLink: 'https://drive.google.com/file/d/drive_slug_test_789',
+      });
+      process.env.GOOGLE_DRIVE_FOLDER_ID = 'parent_folder_123';
     });
 
     it('should convert title to lowercase slug', async () => {

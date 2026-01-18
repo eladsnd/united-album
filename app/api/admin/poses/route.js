@@ -20,14 +20,21 @@ import { ChallengeService } from '@/lib/services/ChallengeService';
  * GET - List all poses
  *
  * No authentication required (public data)
+ * Transforms Drive IDs to proxy URLs for client consumption
  */
 async function handleGetPoses(request) {
   const challengeService = new ChallengeService();
   const challenges = await challengeService.getAllPoses();
 
+  // Transform image Drive IDs to proxy URLs
+  const transformedChallenges = challenges.map(challenge => ({
+    ...challenge,
+    image: `/api/image/${challenge.image}`, // Convert Drive ID to proxy URL
+  }));
+
   return NextResponse.json({
     success: true,
-    data: challenges,
+    data: transformedChallenges,
   });
 }
 
@@ -51,9 +58,15 @@ async function handleCreatePose(request) {
     folderId,
   });
 
+  // Transform Drive ID to proxy URL for client
+  const transformedPose = {
+    ...newPose,
+    image: `/api/image/${newPose.image}`,
+  };
+
   return NextResponse.json({
     success: true,
-    data: newPose,
+    data: transformedPose,
     message: 'Pose created successfully.',
   }, { status: 201 });
 }
@@ -79,9 +92,15 @@ async function handleUpdatePose(request) {
     folderId,
   });
 
+  // Transform Drive ID to proxy URL for client
+  const transformedPose = {
+    ...updatedPose,
+    image: `/api/image/${updatedPose.image}`,
+  };
+
   return NextResponse.json({
     success: true,
-    data: updatedPose,
+    data: transformedPose,
     message: 'Pose updated successfully.',
   });
 }
