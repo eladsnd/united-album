@@ -7,6 +7,15 @@ global.TextEncoder = TextEncoder;
 global.TextDecoder = TextDecoder;
 global.ReadableStream = ReadableStream;
 
+// Polyfill setImmediate for Prisma compatibility
+if (typeof global.setImmediate === 'undefined') {
+  global.setImmediate = (callback, ...args) => setTimeout(callback, 0, ...args);
+}
+
+if (typeof global.clearImmediate === 'undefined') {
+  global.clearImmediate = clearTimeout;
+}
+
 // Polyfill fetch APIs
 global.Request = class Request {
     constructor(url, init = {}) {
