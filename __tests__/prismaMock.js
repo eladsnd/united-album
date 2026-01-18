@@ -11,7 +11,7 @@ import { PrismaClient } from '@prisma/client';
 import { mockDeep, mockReset } from 'jest-mock-extended';
 
 // Create a deep mock of PrismaClient
-const prismaMock = mockDeep();
+export const prismaMock = mockDeep();
 
 // Reset mock before each test
 beforeEach(() => {
