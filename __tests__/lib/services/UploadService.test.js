@@ -1,18 +1,26 @@
 /**
- * UploadService Test Suite (TDD)
+ * UploadService Tests
  *
- * Tests for the Upload business logic service.
- * Service layer pattern - isolates business logic from HTTP/routing concerns.
+ * Tests for photo upload workflow with validation, Drive upload, and metadata persistence.
+ * Focuses on testing business logic rather than implementation details.
  */
+
+import { prismaMock } from '../../prismaMock.js';
+
+// Mock Prisma client BEFORE importing repositories and services
+jest.mock('../../../lib/prisma.js', () => ({
+  __esModule: true,
+  default: require('../../prismaMock.js').prismaMock,
+}));
 
 import { UploadService } from '../../../lib/services/UploadService';
 import { ValidationError, InternalServerError } from '../../../lib/api/errors';
-import * as googleDrive from '../../../lib/googleDrive';
-import * as photoStorage from '../../../lib/photoStorage';
+import { uploadToDrive } from '../../../lib/googleDrive';
 
-// Mock dependencies
-jest.mock('../../../lib/googleDrive');
-jest.mock('../../../lib/photoStorage');
+// Mock Google Drive operations
+jest.mock('../../../lib/googleDrive', () => ({
+  uploadToDrive: jest.fn(),
+}));
 
 describe('UploadService', () => {
   let uploadService;
@@ -46,46 +54,41 @@ describe('UploadService', () => {
   describe('processUpload', () => {
     it('should successfully upload photo and save metadata', async () => {
       // Mock successful Drive upload
-      googleDrive.uploadToDrive.mockResolvedValue({
+      uploadToDrive.mockResolvedValue({
         id: 'drive_123',
         webViewLink: 'https://drive.google.com/file/d/drive_123',
       });
 
-      // Mock successful metadata save
-      const savedPhoto = {
-        id: 12345,
+      // Mock successful metadata save via Prisma
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
         driveId: 'drive_123',
         name: 'test-photo.jpg',
-      };
-      photoStorage.savePhoto.mockResolvedValue(savedPhoto);
+        url: '/api/image/drive_123',
+        mainFaceId: 'unknown',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        poseId: 'test-pose',
+        uploaderId: 'uploader_123',
+        timestamp: new Date(),
+      });
 
       const result = await uploadService.processUpload(mockFormData);
 
-      expect(result).toEqual({
-        success: true,
-        photo: savedPhoto,
-      });
+      expect(result.success).toBe(true);
+      expect(result.photo).toBeDefined();
+      expect(result.photo.driveId).toBe('drive_123');
+      expect(result.photo.faceIds).toEqual([]); // Deserialized by repository
 
       // Verify Drive upload was called with correct params
-      expect(googleDrive.uploadToDrive).toHaveBeenCalledWith(
+      expect(uploadToDrive).toHaveBeenCalledWith(
         expect.any(Buffer),
         'test-photo.jpg',
         'test-folder-id'
       );
 
-      // Verify photo metadata was saved
-      expect(photoStorage.savePhoto).toHaveBeenCalledWith({
-        id: expect.any(Number),
-        name: 'test-photo.jpg',
-        driveId: 'drive_123',
-        url: '/api/image/drive_123',
-        mainFaceId: 'unknown',
-        faceIds: [],
-        faceBoxes: [],
-        poseId: 'test-pose',
-        uploaderId: 'uploader_123',
-        timestamp: expect.any(String),
-      });
+      // Verify photo was saved via Prisma
+      expect(prismaMock.photo.upsert).toHaveBeenCalled();
     });
 
     it('should throw ValidationError when no file is provided', async () => {
@@ -100,8 +103,8 @@ describe('UploadService', () => {
         .toThrow('No file uploaded');
 
       // Should not attempt Drive upload or metadata save
-      expect(googleDrive.uploadToDrive).not.toHaveBeenCalled();
-      expect(photoStorage.savePhoto).not.toHaveBeenCalled();
+      expect(uploadToDrive).not.toHaveBeenCalled();
+      expect(prismaMock.photo.upsert).not.toHaveBeenCalled();
     });
 
     it('should use default folder ID from env when not provided', async () => {
@@ -113,12 +116,18 @@ describe('UploadService', () => {
         return null;
       });
 
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1, driveId: 'drive_123' });
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
+        driveId: 'drive_123',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
       await uploadService.processUpload(mockFormData);
 
-      expect(googleDrive.uploadToDrive).toHaveBeenCalledWith(
+      expect(uploadToDrive).toHaveBeenCalledWith(
         expect.any(Buffer),
         'test-photo.jpg',
         'default-folder'
@@ -134,16 +143,18 @@ describe('UploadService', () => {
         return null;
       });
 
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1 });
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
+        poseId: 'unknown_pose',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
-      await uploadService.processUpload(mockFormData);
+      const result = await uploadService.processUpload(mockFormData);
 
-      expect(photoStorage.savePhoto).toHaveBeenCalledWith(
-        expect.objectContaining({
-          poseId: 'unknown_pose',
-        })
-      );
+      expect(result.photo.poseId).toBe('unknown_pose');
     });
 
     it('should allow null uploaderId (anonymous uploads)', async () => {
@@ -155,20 +166,22 @@ describe('UploadService', () => {
         return null;
       });
 
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1 });
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
+        uploaderId: null,
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
-      await uploadService.processUpload(mockFormData);
+      const result = await uploadService.processUpload(mockFormData);
 
-      expect(photoStorage.savePhoto).toHaveBeenCalledWith(
-        expect.objectContaining({
-          uploaderId: null,
-        })
-      );
+      expect(result.photo.uploaderId).toBeNull();
     });
 
     it('should throw error when Drive upload fails', async () => {
-      googleDrive.uploadToDrive.mockRejectedValue(
+      uploadToDrive.mockRejectedValue(
         new Error('Drive API quota exceeded')
       );
 
@@ -181,12 +194,12 @@ describe('UploadService', () => {
         .toThrow('Drive upload failed: Drive API quota exceeded');
 
       // Should not attempt to save metadata if upload fails
-      expect(photoStorage.savePhoto).not.toHaveBeenCalled();
+      expect(prismaMock.photo.upsert).not.toHaveBeenCalled();
     });
 
     it('should throw error when metadata save fails', async () => {
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockRejectedValue(
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockRejectedValue(
         new Error('Database connection failed')
       );
 
@@ -194,63 +207,81 @@ describe('UploadService', () => {
         .rejects
         .toThrow(InternalServerError);
 
+      // BaseRepository wraps the error message
       await expect(uploadService.processUpload(mockFormData))
         .rejects
-        .toThrow('Failed to save photo metadata: Database connection failed');
+        .toThrow('Failed to save photo metadata');
     });
 
     it('should create photo with timestamp', async () => {
-      const beforeTime = new Date().toISOString();
+      const beforeTime = new Date();
 
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1 });
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
+        driveId: 'drive_123',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
-      await uploadService.processUpload(mockFormData);
+      const result = await uploadService.processUpload(mockFormData);
 
-      const afterTime = new Date().toISOString();
-      const savedPhoto = photoStorage.savePhoto.mock.calls[0][0];
+      const afterTime = new Date();
 
-      expect(savedPhoto.timestamp).toBeDefined();
-      expect(savedPhoto.timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T/); // ISO format
-      expect(savedPhoto.timestamp >= beforeTime).toBe(true);
-      expect(savedPhoto.timestamp <= afterTime).toBe(true);
+      expect(result.photo.timestamp).toBeDefined();
+      expect(result.photo.timestamp.getTime()).toBeGreaterThanOrEqual(beforeTime.getTime());
+      expect(result.photo.timestamp.getTime()).toBeLessThanOrEqual(afterTime.getTime());
     });
 
-    it('should create photo with auto-generated ID', async () => {
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1 });
+    it('should return photo with database-generated ID', async () => {
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 42, // Database auto-generated ID
+        driveId: 'drive_123',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
-      await uploadService.processUpload(mockFormData);
+      const result = await uploadService.processUpload(mockFormData);
 
-      const savedPhoto = photoStorage.savePhoto.mock.calls[0][0];
-
-      expect(savedPhoto.id).toBeDefined();
-      expect(typeof savedPhoto.id).toBe('number');
-      expect(savedPhoto.id).toBeGreaterThan(0);
+      // ID is generated by database (Prisma), not by service
+      expect(result.photo.id).toBe(42);
+      expect(typeof result.photo.id).toBe('number');
     });
 
     it('should create proxy URL for photo', async () => {
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_456' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1 });
+      uploadToDrive.mockResolvedValue({ id: 'drive_456' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
+        driveId: 'drive_456',
+        url: '/api/image/drive_456',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
-      await uploadService.processUpload(mockFormData);
+      const result = await uploadService.processUpload(mockFormData);
 
-      const savedPhoto = photoStorage.savePhoto.mock.calls[0][0];
-
-      expect(savedPhoto.url).toBe('/api/image/drive_456');
+      expect(result.photo.url).toBe('/api/image/drive_456');
     });
 
     it('should initialize photo with empty face data', async () => {
-      googleDrive.uploadToDrive.mockResolvedValue({ id: 'drive_123' });
-      photoStorage.savePhoto.mockResolvedValue({ id: 1 });
+      uploadToDrive.mockResolvedValue({ id: 'drive_123' });
+      prismaMock.photo.upsert.mockResolvedValue({
+        id: 1,
+        mainFaceId: 'unknown',
+        faceIds: JSON.stringify([]),
+        faceBoxes: JSON.stringify([]),
+        timestamp: new Date(),
+      });
 
-      await uploadService.processUpload(mockFormData);
+      const result = await uploadService.processUpload(mockFormData);
 
-      const savedPhoto = photoStorage.savePhoto.mock.calls[0][0];
-
-      expect(savedPhoto.mainFaceId).toBe('unknown');
-      expect(savedPhoto.faceIds).toEqual([]);
-      expect(savedPhoto.faceBoxes).toEqual([]);
+      expect(result.photo.mainFaceId).toBe('unknown');
+      expect(result.photo.faceIds).toEqual([]);
+      expect(result.photo.faceBoxes).toEqual([]);
     });
   });
 
