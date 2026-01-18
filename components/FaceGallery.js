@@ -30,16 +30,21 @@ export default function AlbumGallery() {
     const [likeCounts, setLikeCounts] = useState({}); // { photoId: count }
     const [downloading, setDownloading] = useState(false);
     const [deletingPhotos, setDeletingPhotos] = useState(new Set()); // Track photos being deleted
+    const [currentPage, setCurrentPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     const fetchPhotos = async () => {
         try {
-            const res = await fetch('/api/photos');
+            const res = await fetch('/api/photos?page=1&limit=20');
             const data = await res.json();
-            setPhotos(data);
+            const photosArray = data.photos || data; // Handle both new and old response formats
+            setPhotos(photosArray);
+            setHasMore(data.pagination?.hasMore || false);
 
             // Initialize like counts from photo data
             const counts = {};
-            data.forEach(photo => {
+            photosArray.forEach(photo => {
                 counts[photo.id] = photo.likeCount || 0;
             });
             setLikeCounts(counts);
@@ -55,7 +60,7 @@ export default function AlbumGallery() {
             if (userId) {
                 const likedSet = new Set();
                 await Promise.all(
-                    data.map(async (photo) => {
+                    photosArray.map(async (photo) => {
                         try {
                             const likeRes = await fetch(`/api/photos/${photo.id}/like?userId=${userId}`);
                             const likeData = await likeRes.json();
@@ -73,6 +78,54 @@ export default function AlbumGallery() {
             console.error('Failed to fetch photos:', err);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const loadMore = async () => {
+        if (loadingMore || !hasMore) return;
+
+        setLoadingMore(true);
+        try {
+            const nextPage = currentPage + 1;
+            const res = await fetch(`/api/photos?page=${nextPage}&limit=20`);
+            const data = await res.json();
+            const newPhotos = data.photos || [];
+
+            // Append new photos to existing array
+            setPhotos(prev => [...prev, ...newPhotos]);
+            setCurrentPage(nextPage);
+            setHasMore(data.pagination?.hasMore || false);
+
+            // Update like counts for new photos
+            const counts = {};
+            newPhotos.forEach(photo => {
+                counts[photo.id] = photo.likeCount || 0;
+            });
+            setLikeCounts(prev => ({ ...prev, ...counts }));
+
+            // Fetch liked status for new photos
+            const userId = getUserId();
+            if (userId) {
+                const newLikedSet = new Set(likedPhotos);
+                await Promise.all(
+                    newPhotos.map(async (photo) => {
+                        try {
+                            const likeRes = await fetch(`/api/photos/${photo.id}/like?userId=${userId}`);
+                            const likeData = await likeRes.json();
+                            if (likeData.liked) {
+                                newLikedSet.add(photo.id);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch like status for photo ${photo.id}:`, err);
+                        }
+                    })
+                );
+                setLikedPhotos(newLikedSet);
+            }
+        } catch (err) {
+            console.error('Failed to load more photos:', err);
+        } finally {
+            setLoadingMore(false);
         }
     };
 
@@ -163,6 +216,25 @@ export default function AlbumGallery() {
         window.addEventListener('photoUploaded', fetchPhotos);
         return () => window.removeEventListener('photoUploaded', fetchPhotos);
     }, []);
+
+    // Infinite scroll effect
+    useEffect(() => {
+        const handleScroll = () => {
+            if (loadingMore || !hasMore) return;
+
+            const scrollHeight = document.documentElement.scrollHeight;
+            const scrollTop = document.documentElement.scrollTop;
+            const clientHeight = document.documentElement.clientHeight;
+
+            // Trigger load more when scrolled to 80% of page
+            if (scrollTop + clientHeight >= scrollHeight * 0.8) {
+                loadMore();
+            }
+        };
+
+        window.addEventListener('scroll', handleScroll);
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [loadingMore, hasMore, currentPage]);
 
     const toggleLike = async (photoId) => {
         const userId = getUserId();
@@ -441,6 +513,17 @@ export default function AlbumGallery() {
                         );
                     })}
                 </div>
+                {loadingMore && (
+                    <div style={{ textAlign: 'center', padding: '2rem' }}>
+                        <Loader2 className="animate-spin" size={32} style={{ display: 'inline-block' }} />
+                        <p style={{ marginTop: '1rem', opacity: 0.7 }}>Loading more photos...</p>
+                    </div>
+                )}
+                {!loadingMore && !hasMore && filteredPhotos.length > 0 && (
+                    <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>
+                        <p>You've reached the end!</p>
+                    </div>
+                )}
                 </>
             )}
         </div>
