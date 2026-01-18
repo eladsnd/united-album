@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import challengesData from '../data/challenges.json';
 import { Download, Heart, Loader2 } from 'lucide-react';
+import { getUserId } from '../lib/utils/getUserId';
 
 // Skeleton loader component
 function GallerySkeleton() {
@@ -26,6 +27,7 @@ export default function AlbumGallery() {
     const [faceScrollIndex, setFaceScrollIndex] = useState(0);
     const [imageErrors, setImageErrors] = useState({});
     const [likedPhotos, setLikedPhotos] = useState(new Set());
+    const [likeCounts, setLikeCounts] = useState({}); // { photoId: count }
     const [downloading, setDownloading] = useState(false);
     const [deletingPhotos, setDeletingPhotos] = useState(new Set()); // Track photos being deleted
 
@@ -35,11 +37,38 @@ export default function AlbumGallery() {
             const data = await res.json();
             setPhotos(data);
 
+            // Initialize like counts from photo data
+            const counts = {};
+            data.forEach(photo => {
+                counts[photo.id] = photo.likeCount || 0;
+            });
+            setLikeCounts(counts);
+
             // Fetch face thumbnails
             const facesRes = await fetch('/api/face-thumbnails');
             const facesData = await facesRes.json();
             console.log('[FaceGallery] Face thumbnails:', facesData);
             setFaceThumbnails(facesData);
+
+            // Fetch liked status for current user
+            const userId = getUserId();
+            if (userId) {
+                const likedSet = new Set();
+                await Promise.all(
+                    data.map(async (photo) => {
+                        try {
+                            const likeRes = await fetch(`/api/photos/${photo.id}/like?userId=${userId}`);
+                            const likeData = await likeRes.json();
+                            if (likeData.liked) {
+                                likedSet.add(photo.id);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch like status for photo ${photo.id}:`, err);
+                        }
+                    })
+                );
+                setLikedPhotos(likedSet);
+            }
         } catch (err) {
             console.error('Failed to fetch photos:', err);
         } finally {
@@ -135,33 +164,50 @@ export default function AlbumGallery() {
         return () => window.removeEventListener('photoUploaded', fetchPhotos);
     }, []);
 
-    // Load liked photos from localStorage
-    useEffect(() => {
-        const saved = localStorage.getItem('likedPhotos');
-        if (saved) {
-            try {
-                setLikedPhotos(new Set(JSON.parse(saved)));
-            } catch (e) {
-                console.error('Failed to load likes:', e);
-            }
+    const toggleLike = async (photoId) => {
+        const userId = getUserId();
+        if (!userId) {
+            console.error('[FaceGallery] No user ID available');
+            return;
         }
-    }, []);
 
-    const toggleLike = (photoId) => {
-        setLikedPhotos(prev => {
-            const next = new Set(prev);
-            if (next.has(photoId)) {
-                next.delete(photoId);
-            } else {
-                next.add(photoId);
+        try {
+            const res = await fetch(`/api/photos/${photoId}/like`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId })
+            });
+
+            if (!res.ok) {
+                throw new Error('Failed to toggle like');
             }
-            // Save to localStorage
-            localStorage.setItem('likedPhotos', JSON.stringify([...next]));
-            return next;
-        });
+
+            const { liked, likeCount } = await res.json();
+
+            // Update local state
+            setLikedPhotos(prev => {
+                const next = new Set(prev);
+                if (liked) {
+                    next.add(photoId);
+                } else {
+                    next.delete(photoId);
+                }
+                return next;
+            });
+
+            // Update like count
+            setLikeCounts(prev => ({
+                ...prev,
+                [photoId]: likeCount
+            }));
+
+        } catch (err) {
+            console.error('[FaceGallery] Failed to toggle like:', err);
+        }
     };
 
     const isLiked = (photoId) => likedPhotos.has(photoId);
+    const getLikeCount = (photoId) => likeCounts[photoId] || 0;
 
     const handleDownloadAlbum = async () => {
         setDownloading(true);
@@ -375,6 +421,9 @@ export default function AlbumGallery() {
                                 aria-label={isLiked(photo.id) ? "Unlike photo" : "Like photo"}
                             >
                                 <Heart size={20} fill={isLiked(photo.id) ? 'currentColor' : 'none'} />
+                                {getLikeCount(photo.id) > 0 && (
+                                    <span className="like-count">{getLikeCount(photo.id)}</span>
+                                )}
                             </button>
                             <Image
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
