@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { listDriveFiles } from '../../../lib/googleDrive';
-import { getPhotos, savePhotos } from '../../../utils/photos';
+import { getPhotos, deletePhoto } from '../../../lib/photoStorage';
+import prisma from '../../../lib/prisma';
 
 export async function GET() {
     try {
-        const localPhotos = getPhotos();
+        const localPhotos = await getPhotos();
 
         // 1. Get all valid file IDs from Drive
         // Since we use the 'drive.file' scope, this will only return files created by our app.
@@ -32,16 +33,35 @@ export async function GET() {
             return p;
         });
 
-        // 3. Update local storage if any were removed
+        // 3. Remove deleted photos from database if any were removed
         if (syncedPhotos.length !== localPhotos.length) {
-            console.log(`[Photos API] Pruned ${localPhotos.length - syncedPhotos.length} deleted drive photos.`);
-            savePhotos(syncedPhotos);
+            const removedCount = localPhotos.length - syncedPhotos.length;
+            console.log(`[Photos API] Pruning ${removedCount} deleted drive photos from database.`);
+
+            // Find photos that were removed
+            const syncedDriveIds = new Set(syncedPhotos.map(p => p.driveId));
+            const photosToRemove = localPhotos.filter(p => !syncedDriveIds.has(p.driveId));
+
+            // Delete each removed photo from database
+            for (const photo of photosToRemove) {
+                try {
+                    await deletePhoto(photo.driveId);
+                    console.log(`[Photos API] Deleted orphaned photo: ${photo.driveId}`);
+                } catch (error) {
+                    console.error(`[Photos API] Failed to delete photo ${photo.driveId}:`, error);
+                }
+            }
         }
 
         return NextResponse.json(syncedPhotos);
     } catch (error) {
         console.error('Error fetching/syncing photos:', error);
         // Fallback to local photos if Drive check fails
-        return NextResponse.json(getPhotos());
+        try {
+            return NextResponse.json(await getPhotos());
+        } catch (fallbackError) {
+            console.error('Error fetching fallback photos:', fallbackError);
+            return NextResponse.json([]);
+        }
     }
 }
