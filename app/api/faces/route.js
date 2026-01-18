@@ -4,7 +4,7 @@ import { getAllFaces, saveFaceDescriptor } from '../../../lib/faceStorage';
 // GET /api/faces - Retrieve all known face descriptors
 export async function GET() {
     try {
-        const faces = getAllFaces();
+        const faces = await getAllFaces();
         return NextResponse.json(faces);
     } catch (error) {
         console.error('[Faces API] Error fetching faces:', error);
@@ -74,7 +74,7 @@ export async function POST(request) {
             timestamp: new Date().toISOString()
         };
 
-        const savedFace = saveFaceDescriptor(faceId, descriptor, sanitizedMetadata);
+        const savedFace = await saveFaceDescriptor(faceId, descriptor, sanitizedMetadata);
 
         return NextResponse.json({
             success: true,

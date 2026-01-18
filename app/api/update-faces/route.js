@@ -78,17 +78,17 @@ export async function POST(request) {
 
         // Update face storage with thumbnail Drive IDs
         for (const { faceId, thumbnailDriveId } of successfulThumbnails) {
-            const existingFace = getFaceById(faceId);
+            const existingFace = await getFaceById(faceId);
             if (existingFace) {
                 // Update existing face with thumbnail ID (preserve existing descriptor)
-                saveFaceDescriptor(faceId, existingFace.descriptor, {
+                await saveFaceDescriptor(faceId, existingFace.descriptor, {
                     ...existingFace.metadata,
                     thumbnailDriveId
                 });
                 console.log(`[Update Faces API] Updated ${faceId} with thumbnail ID: ${thumbnailDriveId}`);
             } else {
                 // New face without descriptor yet - save placeholder
-                saveFaceDescriptor(faceId, [], {
+                await saveFaceDescriptor(faceId, [], {
                     thumbnailDriveId
                 });
                 console.log(`[Update Faces API] Created new face ${faceId} with thumbnail ID: ${thumbnailDriveId}`);

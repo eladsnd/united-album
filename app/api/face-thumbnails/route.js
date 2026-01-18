@@ -5,8 +5,8 @@ import { getPhotos } from '../../../lib/photoStorage';
 // GET /api/face-thumbnails - Get face thumbnails (cropped face images)
 export async function GET() {
     try {
-        const faces = getAllFaces();
-        const photos = getPhotos();
+        const faces = await getAllFaces();
+        const photos = await getPhotos();
 
         // For each face, find a representative photo with bounding box
         const faceThumbnails = faces.map(face => {

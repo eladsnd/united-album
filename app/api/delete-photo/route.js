@@ -26,7 +26,7 @@ export async function DELETE(request) {
         console.log(`[Delete Photo API] Delete request for photo ${photoId} by ${isAdmin ? 'ADMIN' : `uploader ${uploaderId}`}`);
 
         // Find the photo first
-        const photos = getPhotos();
+        const photos = await getPhotos();
         const photo = photos.find(p => p.id === photoId);
 
         if (!photo) {
@@ -69,7 +69,7 @@ export async function DELETE(request) {
         // Clean up orphaned face thumbnails
         // Check if any faces from this photo no longer appear in ANY other photo
         const facesInDeletedPhoto = photo.faceIds || [photo.mainFaceId || photo.faceId].filter(Boolean);
-        const remainingPhotos = getPhotos(); // Get updated list after deletion
+        const remainingPhotos = await getPhotos(); // Get updated list after deletion
         const orphanedFaces = [];
 
         for (const faceId of facesInDeletedPhoto) {
@@ -85,7 +85,7 @@ export async function DELETE(request) {
                 // This face is orphaned - no photos contain it anymore
                 console.log(`[Delete Photo API] Face ${faceId} is orphaned (no photos remaining)`);
 
-                const faceData = getFaceById(faceId);
+                const faceData = await getFaceById(faceId);
                 if (faceData && faceData.thumbnailDriveId) {
                     try {
                         // Delete thumbnail from Google Drive
@@ -97,7 +97,7 @@ export async function DELETE(request) {
                 }
 
                 // Delete face from faces.json
-                deleteFace(faceId);
+                await deleteFace(faceId);
                 orphanedFaces.push(faceId);
             }
         }
