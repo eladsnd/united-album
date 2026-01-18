@@ -9,18 +9,18 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
 model Photo {
-  id          BigInt    @id @default(autoincrement())
+  id          Int       @id @default(autoincrement())
   name        String
   driveId     String    @unique
   url         String
   mainFaceId  String    @default("unknown")
-  faceIds     String[]  @default([])
-  faceBoxes   Json      @default("[]")
+  faceIds     String    @default("[]")  // JSON array stored as string for SQLite compatibility
+  faceBoxes   String    @default("[]")  // JSON array stored as string for SQLite compatibility
   poseId      String    @default("unknown_pose")
   uploaderId  String?
   timestamp   DateTime  @default(now())
@@ -36,9 +36,9 @@ model Photo {
 
 model Face {
   faceId            String   @id
-  descriptors       Json     @default("[]")
-  descriptor        Json     @default("[]")
-  metadata          Json     @default("{}")
+  descriptors       String   @default("[]")  // JSON array stored as string for SQLite compatibility
+  descriptor        String   @default("[]")  // JSON array stored as string for SQLite compatibility
+  metadata          String   @default("{}")  // JSON object stored as string for SQLite compatibility
   thumbnailDriveId  String?
   lastSeen          DateTime @default(now())
   photoCount        Int      @default(0)

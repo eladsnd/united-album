@@ -36,3 +36,10 @@ next-env.d.ts
 /data/photos.json
 /data/*.backup.*
 .idea/
+
+/lib/generated/prisma
+
+# Prisma
+*.db
+*.db-journal
+# Note: Keep migration files in version control for deployment
