@@ -21,10 +21,10 @@
     "folderId": null
   },
   {
-    "id": "arigato-gozaimasu",
-    "title": "Arigato-gozaimasu",
-    "instruction": "/",
-    "image": "/challenges/arigato-gozaimasu.jpg",
+    "id": "bloop",
+    "title": "bloop",
+    "instruction": "bloop is the power of friendship",
+    "image": "/challenges/bloop.jpg",
     "folderId": null
   }
 ]
