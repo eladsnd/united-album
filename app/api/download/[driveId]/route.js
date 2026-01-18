@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getFileStream } from '../../../../lib/googleDrive';
 import { getPhotos } from '../../../../lib/photoStorage';
 import { applyRateLimit } from '../../../../lib/rateLimit';
+import { downloadDriveFile } from '../../../../lib/streamUtils';
 
 export async function GET(request, { params }) {
     // Rate limit downloads to prevent API quota exhaustion
@@ -40,34 +41,12 @@ export async function GET(request, { params }) {
         }
         console.log('[Download API] Generated filename:', filename);
 
-        console.log('[Download API] Requesting file stream from Google Drive...');
-        const response = await getFileStream(driveId);
-        console.log('[Download API] Response received:', response);
-        const stream = response.stream;
-        console.log('[Download API] Stream extracted, type:', typeof stream, 'has on method:', typeof stream.on);
+        console.log('[Download API] Requesting file from Google Drive...');
 
-        // Convert Node stream to buffer
-        const chunks = [];
-        let totalBytes = 0;
+        // Use centralized stream utility (DRY principle)
+        const buffer = await downloadDriveFile(getFileStream, driveId);
 
-        await new Promise((resolve, reject) => {
-            stream.on('data', (chunk) => {
-                chunks.push(chunk);
-                totalBytes += chunk.length;
-                console.log('[Download API] Received chunk, size:', chunk.length, 'total so far:', totalBytes);
-            });
-            stream.on('end', () => {
-                console.log('[Download API] Stream ended, total bytes:', totalBytes);
-                resolve();
-            });
-            stream.on('error', (err) => {
-                console.error('[Download API] Stream error:', err);
-                reject(err);
-            });
-        });
-
-        const buffer = Buffer.concat(chunks);
-        console.log('[Download API] Buffer created, size:', buffer.length);
+        console.log('[Download API] File downloaded, size:', buffer.length);
 
         console.log('[Download API] Sending response with headers:', {
             'Content-Type': 'image/jpeg',

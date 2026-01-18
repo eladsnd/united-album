@@ -3,6 +3,7 @@ import { getPhotos } from '../../../lib/photoStorage';
 import { getFileStream } from '../../../lib/googleDrive';
 import JSZip from 'jszip';
 import { applyRateLimit } from '../../../lib/rateLimit';
+import { downloadDriveFile } from '../../../lib/streamUtils';
 
 export async function POST(request) {
     try {
@@ -44,27 +45,12 @@ export async function POST(request) {
         // Download each photo and add to ZIP
         for (const photo of selectedPhotos) {
             try {
-                const response = await getFileStream(photo.driveId);
-                const stream = response.stream;
+                // Use centralized stream utility (DRY principle)
+                const buffer = await downloadDriveFile(getFileStream, photo.driveId);
 
-                // Use proper Node.js stream event listeners (not async iteration)
-                const chunks = [];
-                await new Promise((resolve, reject) => {
-                    stream.on('data', (chunk) => {
-                        chunks.push(chunk);
-                    });
-                    stream.on('end', () => {
-                        resolve();
-                    });
-                    stream.on('error', (err) => {
-                        reject(err);
-                    });
-                });
-
-                const buffer = Buffer.concat(chunks);
                 const filename = `${photo.poseId || 'photo'}-${photo.id}.jpg`;
                 zip.file(filename, buffer);
-                console.log(`[Download Album] Added photo ${photo.id} (${buffer.length} bytes)`);
+                console.log(`[Download Album] Added photo ${photo.id} to ZIP (${buffer.length} bytes)`);
             } catch (err) {
                 console.error(`[Download Album] Failed to add photo ${photo.id}:`, err);
             }
