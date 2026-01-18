@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
-import { getAllFaces } from '../../../lib/faceStorage';
-import { getPhotos } from '../../../lib/photoStorage';
+import { FaceRepository } from '../../../lib/repositories/FaceRepository.js';
+import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
 
 // GET /api/face-thumbnails - Get face thumbnails (cropped face images)
 export async function GET() {
     try {
-        const faces = await getAllFaces();
-        const photos = await getPhotos();
+        const faceRepo = new FaceRepository();
+        const photoRepo = new PhotoRepository();
+
+        const faces = await faceRepo.findAll();
+        const photos = await photoRepo.findAll();
 
         // For each face, find a representative photo with bounding box
         const faceThumbnails = faces.map(face => {

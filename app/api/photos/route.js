@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { listDriveFiles } from '../../../lib/googleDrive';
-import { getPhotos, deletePhoto } from '../../../lib/photoStorage';
-import prisma from '../../../lib/prisma';
+import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
 
 export async function GET() {
     try {
-        const localPhotos = await getPhotos();
+        const photoRepo = new PhotoRepository();
+        const localPhotos = await photoRepo.findAll();
 
         // 1. Get all valid file IDs from Drive
         // Since we use the 'drive.file' scope, this will only return files created by our app.
@@ -45,7 +45,7 @@ export async function GET() {
             // Delete each removed photo from database
             for (const photo of photosToRemove) {
                 try {
-                    await deletePhoto(photo.driveId);
+                    await photoRepo.deleteByDriveId(photo.driveId);
                     console.log(`[Photos API] Deleted orphaned photo: ${photo.driveId}`);
                 } catch (error) {
                     console.error(`[Photos API] Failed to delete photo ${photo.driveId}:`, error);
@@ -58,7 +58,8 @@ export async function GET() {
         console.error('Error fetching/syncing photos:', error);
         // Fallback to local photos if Drive check fails
         try {
-            return NextResponse.json(await getPhotos());
+            const photoRepo = new PhotoRepository();
+            return NextResponse.json(await photoRepo.findAll());
         } catch (fallbackError) {
             console.error('Error fetching fallback photos:', fallbackError);
             return NextResponse.json([]);

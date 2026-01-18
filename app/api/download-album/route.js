@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getPhotos } from '../../../lib/photoStorage';
+import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
 import { getFileStream } from '../../../lib/googleDrive';
 import JSZip from 'jszip';
 import { applyRateLimit } from '../../../lib/rateLimit';
@@ -37,7 +37,8 @@ export async function POST(request) {
             );
         }
 
-        const photos = getPhotos();
+        const photoRepo = new PhotoRepository();
+        const photos = await photoRepo.findAll();
         const selectedPhotos = photos.filter(p => photoIds.includes(p.id));
 
         const zip = new JSZip();

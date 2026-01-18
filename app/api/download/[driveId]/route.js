@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getFileStream } from '../../../../lib/googleDrive';
-import { getPhotos } from '../../../../lib/photoStorage';
+import { PhotoRepository } from '../../../../lib/repositories/PhotoRepository.js';
 import { applyRateLimit } from '../../../../lib/rateLimit';
 import { downloadDriveFile } from '../../../../lib/streamUtils';
 
@@ -17,7 +17,8 @@ export async function GET(request, { params }) {
 
     try {
         // Get photo metadata for better filename
-        const photos = getPhotos();
+        const photoRepo = new PhotoRepository();
+        const photos = await photoRepo.findAll();
         console.log('[Download API] Total photos in storage:', photos.length);
 
         const photo = photos.find(p => p.driveId === driveId);

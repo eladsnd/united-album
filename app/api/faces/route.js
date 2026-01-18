@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getAllFaces, saveFaceDescriptor } from '../../../lib/faceStorage';
+import { FaceRepository } from '../../../lib/repositories/FaceRepository.js';
 
 // GET /api/faces - Retrieve all known face descriptors
 export async function GET() {
     try {
-        const faces = await getAllFaces();
+        const faceRepo = new FaceRepository();
+        const faces = await faceRepo.findAll();
         return NextResponse.json(faces);
     } catch (error) {
         console.error('[Faces API] Error fetching faces:', error);
@@ -74,7 +75,8 @@ export async function POST(request) {
             timestamp: new Date().toISOString()
         };
 
-        const savedFace = await saveFaceDescriptor(faceId, descriptor, sanitizedMetadata);
+        const faceRepo = new FaceRepository();
+        const savedFace = await faceRepo.saveDescriptor(faceId, descriptor, sanitizedMetadata);
 
         return NextResponse.json({
             success: true,
