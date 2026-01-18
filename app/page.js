@@ -114,14 +114,13 @@ export default function Home() {
                                     <ChevronRight size={32} />
                                 </button>
                             </div>
-                        </div>
 
-                        {challenge && (
-                            <div className="card upload-area">
-                                <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
-                                <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
-                            </div>
-                        )}
+                            {challenge && (
+                                <div className="card upload-area">
+                                    <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
+                                    <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
+                                </div>
+                            )}
                         </div>
                         )}
                     </section>
