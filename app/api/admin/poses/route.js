@@ -8,10 +8,10 @@
 
 import { NextResponse } from 'next/server';
 import { isAdminAuthenticated } from '../../../../lib/adminAuth';
+import prisma from '../../../../lib/prisma';
 import fs from 'fs';
 import path from 'path';
 
-const CHALLENGES_FILE_PATH = path.join(process.cwd(), 'data', 'challenges.json');
 const CHALLENGES_IMAGE_DIR = path.join(process.cwd(), 'public', 'challenges');
 
 // Allowed image types
@@ -53,47 +53,19 @@ function slugify(title) {
 }
 
 /**
- * Read challenges from JSON file
+ * Get all challenges from database
  *
- * @returns {Array} - Array of pose challenges
+ * @returns {Promise<Array>} - Array of pose challenges
  */
-function readChallenges() {
+async function getChallenges() {
   try {
-    if (!fs.existsSync(CHALLENGES_FILE_PATH)) {
-      // Initialize with empty array if file doesn't exist
-      fs.writeFileSync(CHALLENGES_FILE_PATH, JSON.stringify([], null, 2));
-      return [];
-    }
-    const data = fs.readFileSync(CHALLENGES_FILE_PATH, 'utf8');
-    return JSON.parse(data);
+    const challenges = await prisma.challenge.findMany({
+      orderBy: { createdAt: 'asc' },
+    });
+    return challenges;
   } catch (error) {
     console.error('Error reading challenges:', error);
     throw new Error('Failed to read challenges data');
-  }
-}
-
-/**
- * Write challenges to JSON file (atomic operation)
- *
- * @param {Array} challenges - Array of pose challenges
- */
-function writeChallenges(challenges) {
-  try {
-    // Ensure data directory exists
-    const dataDir = path.dirname(CHALLENGES_FILE_PATH);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
-
-    // Write to temporary file first (atomic write)
-    const tempPath = `${CHALLENGES_FILE_PATH}.tmp`;
-    fs.writeFileSync(tempPath, JSON.stringify(challenges, null, 2));
-
-    // Rename to actual file (atomic on most systems)
-    fs.renameSync(tempPath, CHALLENGES_FILE_PATH);
-  } catch (error) {
-    console.error('Error writing challenges:', error);
-    throw new Error('Failed to save challenges data');
   }
 }
 
@@ -156,7 +128,7 @@ async function saveImageFile(file, poseId) {
  */
 export async function GET(request) {
   try {
-    const challenges = readChallenges();
+    const challenges = await getChallenges();
     return NextResponse.json({
       success: true,
       data: challenges,
@@ -218,9 +190,12 @@ export async function POST(request) {
     // Generate unique ID from title
     const id = slugify(title);
 
-    // Check if ID already exists
-    const challenges = readChallenges();
-    if (challenges.some(challenge => challenge.id === id)) {
+    // Check if ID already exists in database
+    const existingChallenge = await prisma.challenge.findUnique({
+      where: { id },
+    });
+
+    if (existingChallenge) {
       return NextResponse.json(
         { error: `Pose with ID "${id}" already exists. Please use a different title.` },
         { status: 409 }
@@ -238,33 +213,16 @@ export async function POST(request) {
       );
     }
 
-    // Create new pose object
-    const newPose = {
-      id,
-      title: title.trim(),
-      instruction: instruction.trim(),
-      image: imagePath,
-      folderId: folderId || null,
-    };
-
-    // Add to challenges array
-    challenges.push(newPose);
-
-    // Save to file
-    try {
-      writeChallenges(challenges);
-    } catch (writeError) {
-      // Attempt to cleanup saved image on failure
-      try {
-        const imageFsPath = path.join(process.cwd(), 'public', imagePath);
-        if (fs.existsSync(imageFsPath)) {
-          fs.unlinkSync(imageFsPath);
-        }
-      } catch (cleanupError) {
-        console.error('Failed to cleanup image after write failure:', cleanupError);
-      }
-      throw writeError;
-    }
+    // Create new pose in database
+    const newPose = await prisma.challenge.create({
+      data: {
+        id,
+        title: title.trim(),
+        instruction: instruction.trim(),
+        image: imagePath,
+        folderId: folderId || null,
+      },
+    });
 
     console.log(`[Pose API] Created new pose: ${id}`);
 
@@ -316,39 +274,38 @@ export async function PUT(request) {
       );
     }
 
-    // Read challenges
-    const challenges = readChallenges();
-    const poseIndex = challenges.findIndex(challenge => challenge.id === id);
+    // Find existing pose in database
+    const existingPose = await prisma.challenge.findUnique({
+      where: { id },
+    });
 
-    if (poseIndex === -1) {
+    if (!existingPose) {
       return NextResponse.json(
         { error: `Pose with ID "${id}" not found.` },
         { status: 404 }
       );
     }
 
-    // Get existing pose
-    const existingPose = challenges[poseIndex];
-    const updatedPose = { ...existingPose };
+    // Build update object with only provided fields
+    const updateData = {};
 
-    // Update fields if provided
     if (title && typeof title === 'string' && title.trim().length > 0) {
-      updatedPose.title = title.trim();
+      updateData.title = title.trim();
     }
 
     if (instruction && typeof instruction === 'string' && instruction.trim().length > 0) {
-      updatedPose.instruction = instruction.trim();
+      updateData.instruction = instruction.trim();
     }
 
     if (folderId !== null && folderId !== undefined) {
-      updatedPose.folderId = folderId || null;
+      updateData.folderId = folderId || null;
     }
 
     // Handle image update if provided
     if (image && image instanceof File) {
       try {
         const newImagePath = await saveImageFile(image, id);
-        updatedPose.image = newImagePath;
+        updateData.image = newImagePath;
       } catch (imageError) {
         return NextResponse.json(
           { error: imageError.message },
@@ -357,11 +314,11 @@ export async function PUT(request) {
       }
     }
 
-    // Update in array
-    challenges[poseIndex] = updatedPose;
-
-    // Save to file
-    writeChallenges(challenges);
+    // Update in database
+    const updatedPose = await prisma.challenge.update({
+      where: { id },
+      data: updateData,
+    });
 
     console.log(`[Pose API] Updated pose: ${id}`);
 
@@ -409,34 +366,33 @@ export async function DELETE(request) {
       );
     }
 
-    // Read challenges
-    const challenges = readChallenges();
-    const poseIndex = challenges.findIndex(challenge => challenge.id === id);
+    // Delete from database
+    try {
+      const deletedPose = await prisma.challenge.delete({
+        where: { id },
+      });
 
-    if (poseIndex === -1) {
-      return NextResponse.json(
-        { error: `Pose with ID "${id}" not found.` },
-        { status: 404 }
-      );
+      console.log(`[Pose API] Deleted pose: ${id}`);
+      console.log(`[Pose API] Image file preserved at: ${deletedPose.image}`);
+
+      return NextResponse.json({
+        success: true,
+        message: 'Pose deleted successfully.',
+        data: {
+          id: deletedPose.id,
+          note: 'Image file preserved to prevent breaking existing references.',
+        },
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        // Prisma error: Record not found
+        return NextResponse.json(
+          { error: `Pose with ID "${id}" not found.` },
+          { status: 404 }
+        );
+      }
+      throw error;
     }
-
-    // Remove from array
-    const deletedPose = challenges.splice(poseIndex, 1)[0];
-
-    // Save to file
-    writeChallenges(challenges);
-
-    console.log(`[Pose API] Deleted pose: ${id}`);
-    console.log(`[Pose API] Image file preserved at: ${deletedPose.image}`);
-
-    return NextResponse.json({
-      success: true,
-      message: 'Pose deleted successfully.',
-      data: {
-        id: deletedPose.id,
-        note: 'Image file preserved to prevent breaking existing references.',
-      },
-    });
 
   } catch (error) {
     console.error('DELETE /api/admin/poses error:', error);
