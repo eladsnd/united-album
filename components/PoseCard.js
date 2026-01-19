@@ -1,18 +1,27 @@
 "use strict";
 import Image from 'next/image';
 
-export default function PoseCard({ challenge, compact = false }) {
+export default function PoseCard({ challenge, compact = false, onClick }) {
   if (!challenge) return null;
 
   return (
-    <div className={`pose-card ${compact ? 'compact' : ''}`}>
+    <div
+      className={`pose-card ${compact ? 'compact' : ''}`}
+      onClick={onClick}
+      style={{ cursor: onClick ? 'pointer' : 'default' }}
+    >
       <div className="pose-image-container">
         <Image
           src={challenge.image}
           alt={challenge.title}
           width={compact ? 200 : 400}
           height={compact ? 200 : 400}
-          style={{ objectFit: 'cover', borderRadius: '12px' }}
+          style={{
+            width: '100%',
+            height: 'auto',
+            objectFit: 'contain',
+            borderRadius: '12px'
+          }}
           priority={!compact}
         />
       </div>

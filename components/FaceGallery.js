@@ -4,6 +4,7 @@ import Image from 'next/image';
 import challengesData from '../data/challenges.json';
 import { Download, Heart, Loader2 } from 'lucide-react';
 import { getUserId } from '../lib/utils/getUserId';
+import ImageModal from './ImageModal';
 
 // Skeleton loader component
 function GallerySkeleton() {
@@ -23,11 +24,13 @@ export default function AlbumGallery() {
     const [faceThumbnails, setFaceThumbnails] = useState([]);
     const [faceFilter, setFaceFilter] = useState('all');
     const [poseFilter, setPoseFilter] = useState('all');
+    const [likeFilter, setLikeFilter] = useState('all'); // 'all' or 'liked'
     const [loading, setLoading] = useState(true);
     const [faceScrollIndex, setFaceScrollIndex] = useState(0);
     const [imageErrors, setImageErrors] = useState({});
     const [likedPhotos, setLikedPhotos] = useState(new Set());
     const [likeCounts, setLikeCounts] = useState({}); // { photoId: count }
+    const [modalImage, setModalImage] = useState(null);
     const [downloading, setDownloading] = useState(false);
     const [deletingPhotos, setDeletingPhotos] = useState(new Set()); // Track photos being deleted
     const [currentPage, setCurrentPage] = useState(1);
@@ -281,11 +284,73 @@ export default function AlbumGallery() {
     const isLiked = (photoId) => likedPhotos.has(photoId);
     const getLikeCount = (photoId) => likeCounts[photoId] || 0;
 
-    const handleDownloadAlbum = async () => {
+    // Calculate smart object-position based on face locations
+    const getObjectPosition = (faceBoxes) => {
+        if (!faceBoxes || faceBoxes.length === 0) {
+            return 'center center'; // Default for photos without faces
+        }
+
+        try {
+            const boxes = typeof faceBoxes === 'string' ? JSON.parse(faceBoxes) : faceBoxes;
+            if (!Array.isArray(boxes) || boxes.length === 0) {
+                return 'center center';
+            }
+
+            // Calculate center of all faces (weighted average)
+            let totalX = 0;
+            let totalY = 0;
+            let totalWeight = 0;
+
+            boxes.forEach(box => {
+                if (box && box.x !== undefined && box.y !== undefined && box.width && box.height) {
+                    const faceArea = box.width * box.height;
+                    const faceCenterX = box.x + (box.width / 2);
+                    const faceCenterY = box.y + (box.height / 2);
+
+                    totalX += faceCenterX * faceArea;
+                    totalY += faceCenterY * faceArea;
+                    totalWeight += faceArea;
+                }
+            });
+
+            if (totalWeight === 0) {
+                return 'center center';
+            }
+
+            const avgX = totalX / totalWeight;
+            const avgY = totalY / totalWeight;
+
+            // Convert to percentage (0-100%)
+            // Clamp between 20% and 80% to avoid extreme edges
+            const xPercent = Math.max(20, Math.min(80, avgX));
+            const yPercent = Math.max(20, Math.min(80, avgY));
+
+            return `${xPercent}% ${yPercent}%`;
+        } catch (err) {
+            console.error('[FaceGallery] Error calculating object position:', err);
+            return 'center center';
+        }
+    };
+
+    const handleDownloadAlbum = async (downloadType = 'filtered') => {
         setDownloading(true);
 
         try {
-            const photoIds = filteredPhotos.map(p => p.id);
+            let photoIds;
+            let filename;
+
+            if (downloadType === 'liked') {
+                photoIds = Array.from(likedPhotos);
+                if (photoIds.length === 0) {
+                    alert('No liked photos to download. Like some photos first!');
+                    setDownloading(false);
+                    return;
+                }
+                filename = `liked-photos-${Date.now()}.zip`;
+            } else {
+                photoIds = filteredPhotos.map(p => p.id);
+                filename = `united-album-${Date.now()}.zip`;
+            }
 
             const res = await fetch('/api/download-album', {
                 method: 'POST',
@@ -299,7 +364,7 @@ export default function AlbumGallery() {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `united-album-${Date.now()}.zip`;
+            a.download = filename;
             a.click();
             URL.revokeObjectURL(url);
         } catch (err) {
@@ -322,7 +387,8 @@ export default function AlbumGallery() {
         const faceIds = p.faceIds || [p.mainFaceId || p.faceId || 'unknown'];
         const faceMatch = faceFilter === 'all' || faceIds.includes(faceFilter);
         const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
-        return faceMatch && poseMatch;
+        const likeMatch = likeFilter === 'all' || likedPhotos.has(p.id);
+        return faceMatch && poseMatch && likeMatch;
     });
 
     return (
@@ -330,6 +396,18 @@ export default function AlbumGallery() {
             <h2 style={{ fontWeight: '400', marginBottom: '2rem', fontFamily: "'Playfair Display', serif" }}>Album Gallery</h2>
 
             <div className="filter-container">
+                <div className="filter-group">
+                    <span className="filter-label">Filter by Likes</span>
+                    <div className="filter-chips">
+                        <button className={`chip ${likeFilter === 'all' ? 'active' : ''}`} onClick={() => setLikeFilter('all')}>
+                            All Photos
+                        </button>
+                        <button className={`chip ${likeFilter === 'liked' ? 'active' : ''}`} onClick={() => setLikeFilter('liked')}>
+                            ❤️ Liked ({likedPhotos.size})
+                        </button>
+                    </div>
+                </div>
+
                 <div className="filter-group">
                     <span className="filter-label">Filter by Pose</span>
                     <div className="filter-chips">
@@ -437,7 +515,7 @@ export default function AlbumGallery() {
                     <div className="gallery-actions">
                         <button
                             className="btn"
-                            onClick={handleDownloadAlbum}
+                            onClick={() => handleDownloadAlbum('filtered')}
                             disabled={downloading || filteredPhotos.length === 0}
                         >
                             {downloading ? (
@@ -448,10 +526,31 @@ export default function AlbumGallery() {
                             ) : (
                                 <>
                                     <Download size={20} />
-                                    Download Album ({filteredPhotos.length} photos)
+                                    Download Current View ({filteredPhotos.length} photos)
                                 </>
                             )}
                         </button>
+
+                        {likedPhotos.size > 0 && (
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => handleDownloadAlbum('liked')}
+                                disabled={downloading}
+                                style={{ background: '#ef4444', borderColor: '#ef4444', color: 'white' }}
+                            >
+                                {downloading ? (
+                                    <>
+                                        <Loader2 className="animate-spin" size={20} />
+                                        Creating ZIP...
+                                    </>
+                                ) : (
+                                    <>
+                                        <Heart size={20} fill="white" />
+                                        Download Liked ({likedPhotos.size} photos)
+                                    </>
+                                )}
+                            </button>
+                        )}
                     </div>
                     <div className="gallery-grid">
                     {filteredPhotos.map(photo => {
@@ -462,7 +561,12 @@ export default function AlbumGallery() {
                         const isDeleting = deletingPhotos.has(photo.id);
 
                         return (
-                        <div key={photo.id} className={`photo-card ${isDeleting ? 'deleting' : ''}`}>
+                        <div
+                            key={photo.id}
+                            className={`photo-card ${isDeleting ? 'deleting' : ''}`}
+                            onClick={() => setModalImage({ url: photo.url, downloadUrl: `/api/download/${photo.driveId}` })}
+                            style={{ cursor: 'pointer' }}
+                        >
                             {isDeleting && (
                                 <div className="delete-overlay">
                                     <Loader2 className="animate-spin" size={32} />
@@ -471,7 +575,10 @@ export default function AlbumGallery() {
                             {canDelete && !isDeleting && (
                                 <button
                                     className={`delete-photo-btn ${adminMode ? 'admin-delete' : ''}`}
-                                    onClick={() => handleDeletePhoto(photo.id)}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeletePhoto(photo.id);
+                                    }}
                                     aria-label={adminMode ? "Admin: Delete any photo" : "Delete your photo"}
                                     title={adminMode ? "Admin: Delete any photo" : "Delete your photo"}
                                 >
@@ -489,7 +596,10 @@ export default function AlbumGallery() {
                             </a>
                             <button
                                 className={`like-photo-btn ${isLiked(photo.id) ? 'liked' : ''}`}
-                                onClick={() => toggleLike(photo.id)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleLike(photo.id);
+                                }}
                                 aria-label={isLiked(photo.id) ? "Unlike photo" : "Like photo"}
                             >
                                 <Heart size={20} fill={isLiked(photo.id) ? 'currentColor' : 'none'} />
@@ -504,6 +614,9 @@ export default function AlbumGallery() {
                                 unoptimized={true}
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                 className="gallery-image"
+                                style={{
+                                    objectPosition: getObjectPosition(photo.faceBoxes)
+                                }}
                             />
                             <div className="photo-info">
                                 <div>{photo.poseId}</div>
@@ -525,6 +638,15 @@ export default function AlbumGallery() {
                     </div>
                 )}
                 </>
+            )}
+
+            {modalImage && (
+                <ImageModal
+                    imageUrl={modalImage.url}
+                    altText="Wedding Photo"
+                    downloadUrl={modalImage.downloadUrl}
+                    onClose={() => setModalImage(null)}
+                />
             )}
         </div>
     );

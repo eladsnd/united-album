@@ -6,12 +6,14 @@ import UploadSection from '../components/UploadSection';
 import MobileAccessQR from '../components/MobileAccessQR';
 import AlbumGallery from '../components/FaceGallery';
 import Sidebar from '../components/Sidebar';
+import ImageModal from '../components/ImageModal';
 
 export default function Home() {
     const [activeSection, setActiveSection] = useState('challenge');
     const [currentIndex, setCurrentIndex] = useState(-1);
     const [challengesData, setChallengesData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [modalImage, setModalImage] = useState(null);
 
     // Fetch challenges from database API
     useEffect(() => {
@@ -100,10 +102,18 @@ export default function Home() {
                                                     className={`carousel-item ${role}`}
                                                     onClick={() => {
                                                         if (isPrev) prevChallenge();
-                                                        if (isNext) nextChallenge();
+                                                        else if (isNext) nextChallenge();
+                                                        else if (isActive) setModalImage({ url: item.image, downloadUrl: null });
                                                     }}
                                                 >
-                                                    <PoseCard challenge={item} compact={!isActive} />
+                                                    <PoseCard
+                                                        challenge={item}
+                                                        compact={!isActive}
+                                                        onClick={isActive ? (e) => {
+                                                            e.stopPropagation();
+                                                            setModalImage({ url: item.image, downloadUrl: null });
+                                                        } : undefined}
+                                                    />
                                                 </div>
                                             );
                                         })}
@@ -142,6 +152,15 @@ export default function Home() {
                     &copy; 2026 United Album. All rights reserved.
                 </footer>
             </main>
+
+            {modalImage && (
+                <ImageModal
+                    imageUrl={modalImage.url}
+                    altText="Pose Challenge"
+                    downloadUrl={modalImage.downloadUrl}
+                    onClose={() => setModalImage(null)}
+                />
+            )}
         </div>
     );
 }
