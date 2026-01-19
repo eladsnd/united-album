@@ -129,13 +129,12 @@ export default function BulkUpload() {
 
             console.log(`[Bulk Upload] Complete: ${successCount} succeeded, ${failureCount} failed`);
 
-            // Trigger background face processing for uploaded photos
-            // This happens asynchronously - doesn't block the UI
+            // Trigger background face processing immediately via custom event
             if (successCount > 0) {
-                console.log('[Bulk Upload] Triggering background face processing...');
-                fetch('/api/process-faces', { method: 'POST', body: JSON.stringify({}) })
-                    .then(() => console.log('[Bulk Upload] Face processing queued'))
-                    .catch(err => console.error('[Bulk Upload] Face processing failed:', err));
+                console.log('[Bulk Upload] Dispatching upload complete event...');
+                window.dispatchEvent(new CustomEvent('bulk-upload-complete', {
+                    detail: { uploadedCount: successCount }
+                }));
             }
         } catch (error) {
             console.error('[Bulk Upload] Error:', error);

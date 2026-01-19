@@ -9,14 +9,34 @@ import { detectFaceInBrowser } from '../utils/clientFaceDetection';
  * Runs in the background without blocking the UI.
  *
  * Features:
- * - Automatically checks for photos needing processing every 30 seconds
+ * - Event-driven: Triggered immediately when bulk upload completes
+ * - Fallback: Checks for pending photos every 2 minutes (catches edge cases)
  * - Processes photos one at a time to avoid overwhelming the client
  * - Uses the same face detection logic as regular uploads
  * - Updates photo metadata via the /api/update-faces endpoint
+ *
+ * Triggers:
+ * - 'bulk-upload-complete' custom event → Immediate processing
+ * - Initial check after 10 seconds
+ * - Periodic check every 2 minutes (fallback)
  */
 export default function BackgroundFaceProcessor() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
+
+    // Listen for custom events triggered by bulk upload
+    useEffect(() => {
+        const handleUploadComplete = () => {
+            console.log('[BgFaceProcessor] Upload complete event received, starting face processing...');
+            processPendingPhotos();
+        };
+
+        window.addEventListener('bulk-upload-complete', handleUploadComplete);
+
+        return () => {
+            window.removeEventListener('bulk-upload-complete', handleUploadComplete);
+        };
+    }, []);
 
     const processPendingPhotos = async () => {
         if (isProcessing) {
@@ -123,13 +143,14 @@ export default function BackgroundFaceProcessor() {
         }
     };
 
-    // Check for pending photos periodically
+    // Fallback: Check for pending photos periodically (less frequent now)
+    // This catches any photos that might have been missed by the event system
     useEffect(() => {
-        // Initial check after 5 seconds
-        const initialTimer = setTimeout(processPendingPhotos, 5000);
+        // Initial check after 10 seconds
+        const initialTimer = setTimeout(processPendingPhotos, 10000);
 
-        // Then check every 30 seconds
-        const interval = setInterval(processPendingPhotos, 30000);
+        // Then check every 2 minutes (as a fallback only)
+        const interval = setInterval(processPendingPhotos, 120000);
 
         return () => {
             clearTimeout(initialTimer);
