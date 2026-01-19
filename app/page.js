@@ -11,11 +11,24 @@ import BulkUpload from '../components/BulkUpload';
 import BackgroundFaceProcessor from '../components/BackgroundFaceProcessor';
 
 export default function Home() {
-    const [activeSection, setActiveSection] = useState('challenge');
+    // Persist active section across page refreshes
+    const [activeSection, setActiveSection] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('activeSection') || 'challenge';
+        }
+        return 'challenge';
+    });
     const [currentIndex, setCurrentIndex] = useState(-1);
     const [challengesData, setChallengesData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalImage, setModalImage] = useState(null);
+
+    // Save active section to localStorage when it changes
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('activeSection', activeSection);
+        }
+    }, [activeSection]);
 
     // Fetch challenges from database API
     useEffect(() => {
