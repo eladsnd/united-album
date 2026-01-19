@@ -106,7 +106,23 @@ export async function GET(request, { params }) {
             }
         });
     } catch (error) {
-        console.error('[Face Crop API] Error:', error);
-        return NextResponse.json({ error: 'Failed to crop face' }, { status: 500 });
+        console.warn('[Face Crop API] Error - returning placeholder:', error.message);
+
+        // Return a small placeholder SVG for missing face thumbnails
+        const placeholderSvg = `
+            <svg width="120" height="120" xmlns="http://www.w3.org/2000/svg">
+                <rect width="120" height="120" fill="#f8f1e5"/>
+                <circle cx="60" cy="60" r="35" fill="#d4af37" opacity="0.3"/>
+                <text x="50%" y="55%" text-anchor="middle" font-family="Arial, sans-serif" font-size="32" fill="#2c3e50">👤</text>
+            </svg>
+        `;
+
+        return new NextResponse(placeholderSvg, {
+            status: 200,
+            headers: {
+                'Content-Type': 'image/svg+xml',
+                'Cache-Control': 'public, max-age=60', // Cache for 1 minute only
+            },
+        });
     }
 }
