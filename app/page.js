@@ -7,6 +7,7 @@ import MobileAccessQR from '../components/MobileAccessQR';
 import AlbumGallery from '../components/FaceGallery';
 import Sidebar from '../components/Sidebar';
 import ImageModal from '../components/ImageModal';
+import BulkUpload from '../components/BulkUpload';
 
 export default function Home() {
     const [activeSection, setActiveSection] = useState('challenge');
@@ -158,6 +159,12 @@ export default function Home() {
                 {activeSection === 'gallery' && (
                     <section className="animate-in">
                         <AlbumGallery />
+                    </section>
+                )}
+
+                {activeSection === 'bulk-upload' && (
+                    <section className="animate-in">
+                        <BulkUpload />
                     </section>
                 )}
 

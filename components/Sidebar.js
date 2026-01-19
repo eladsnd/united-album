@@ -1,11 +1,12 @@
 "use client";
-import { Camera, Image, Smartphone, User, Settings } from 'lucide-react';
+import { Camera, Image, Smartphone, User, Settings, Upload } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Sidebar({ activeSection, setActiveSection }) {
     const menuItems = [
         { id: 'challenge', label: 'Pose Challenge', icon: Camera },
         { id: 'gallery', label: 'Album Gallery', icon: Image },
+        { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload },
         { id: 'access', label: 'App Access', icon: Smartphone }
     ];
 

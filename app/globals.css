@@ -1897,3 +1897,66 @@ img.face-thumb-img {
     right: 10px;
   }
 }
+
+/* Bulk Upload Styles */
+.bulk-upload-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.bulk-drop-zone {
+  border: 2px dashed var(--glass-border);
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: var(--accent);
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.bulk-drop-zone:hover {
+  border-color: var(--primary);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background: var(--accent);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.file-item:hover {
+  background: rgba(212, 175, 55, 0.1);
+}
+
+@media (max-width: 768px) {
+  .bulk-upload-container {
+    padding: 0 1rem;
+  }
+
+  .bulk-drop-zone {
+    padding: 2rem 1rem;
+    min-height: 250px;
+  }
+
+  .file-list {
+    max-height: 300px;
+  }
+}
