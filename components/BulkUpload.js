@@ -60,6 +60,14 @@ export default function BulkUpload() {
                 formData.append('file', file);
                 formData.append('bulkUpload', 'true'); // Flag to skip face detection
 
+                // Get or create uploaderId for delete permissions
+                const uploaderId = localStorage.getItem('uploaderId') ||
+                    `uploader_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+                if (!localStorage.getItem('uploaderId')) {
+                    localStorage.setItem('uploaderId', uploaderId);
+                }
+                formData.append('uploaderId', uploaderId);
+
                 const response = await fetch('/api/upload', {
                     method: 'POST',
                     body: formData,
@@ -120,6 +128,15 @@ export default function BulkUpload() {
             const failureCount = allResults.filter(r => !r.success).length;
 
             console.log(`[Bulk Upload] Complete: ${successCount} succeeded, ${failureCount} failed`);
+
+            // Trigger background face processing for uploaded photos
+            // This happens asynchronously - doesn't block the UI
+            if (successCount > 0) {
+                console.log('[Bulk Upload] Triggering background face processing...');
+                fetch('/api/process-faces', { method: 'POST', body: JSON.stringify({}) })
+                    .then(() => console.log('[Bulk Upload] Face processing queued'))
+                    .catch(err => console.error('[Bulk Upload] Face processing failed:', err));
+            }
         } catch (error) {
             console.error('[Bulk Upload] Error:', error);
         } finally {

@@ -8,6 +8,7 @@ import AlbumGallery from '../components/FaceGallery';
 import Sidebar from '../components/Sidebar';
 import ImageModal from '../components/ImageModal';
 import BulkUpload from '../components/BulkUpload';
+import BackgroundFaceProcessor from '../components/BackgroundFaceProcessor';
 
 export default function Home() {
     const [activeSection, setActiveSection] = useState('challenge');
@@ -52,6 +53,7 @@ export default function Home() {
     return (
         <div className="app-layout">
             <Sidebar activeSection={activeSection} setActiveSection={setActiveSection} />
+            <BackgroundFaceProcessor />
 
             <main>
                 {activeSection === 'challenge' && (
