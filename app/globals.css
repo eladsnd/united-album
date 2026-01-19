@@ -22,6 +22,8 @@ body {
   color: var(--foreground);
   font-family: 'Playfair Display', serif, system-ui, -apple-system, sans-serif;
   min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100vw;
 }
 
 .app-layout {
@@ -181,6 +183,9 @@ main {
 
   main {
     padding: 1.5rem 0.5rem 100px 0.5rem;
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
   }
 }
 
@@ -411,20 +416,27 @@ h3 {
   gap: 1.5rem;
 }
 
-/* MOBILE: Fixed 2-column grid for better visibility */
+/* MOBILE: Optimized 2-column grid that fits screen perfectly */
 @media (max-width: 768px) {
   .gallery-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 0.5rem;
     padding: 0 0.5rem;
+    width: 100%;
+    max-width: 100vw;
   }
 }
 
-/* Keep 2 columns even on very small screens */
+/* Very small screens: tighter spacing, ensure fits */
 @media (max-width: 480px) {
   .gallery-grid {
     grid-template-columns: repeat(2, 1fr);
-    gap: 0.4rem;
+    gap: 0.3rem;
+    padding: 0 0.3rem;
+  }
+
+  .photo-card {
+    border-radius: 8px;
   }
 }
 
