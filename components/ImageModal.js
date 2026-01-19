@@ -57,8 +57,8 @@ export default function ImageModal({ imageUrl, altText, onClose, downloadUrl }) 
           src={imageUrl}
           alt={altText}
           style={{
-            maxWidth: '90vw',
-            maxHeight: '90vh',
+            maxWidth: '85vw',
+            maxHeight: '75vh',
             width: 'auto',
             height: 'auto',
             objectFit: 'contain',
