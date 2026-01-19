@@ -56,8 +56,27 @@ export default function Home() {
                 {activeSection === 'challenge' && (
                     <section className="animate-in">
                         <header style={{ marginBottom: '3rem', textAlign: 'center' }}>
-                            <h1 style={{ fontSize: '2.5rem', letterSpacing: '2px', fontWeight: '400' }}>UNITED ALBUM</h1>
-                            <p style={{ fontStyle: 'italic', color: '#d4af37' }}>Capture your favorite moments</p>
+                            <h1 style={{
+                                fontFamily: "'Great Vibes', cursive",
+                                fontSize: '4rem',
+                                fontWeight: '400',
+                                color: '#d4af37',
+                                marginBottom: '0.5rem',
+                                textShadow: '2px 2px 4px rgba(0,0,0,0.1)'
+                            }}>
+                                Shira & Elad's Wedding
+                            </h1>
+                            <p style={{
+                                fontFamily: "'Playfair Display', serif",
+                                fontSize: '1.1rem',
+                                letterSpacing: '3px',
+                                textTransform: 'uppercase',
+                                color: '#2c3e50',
+                                fontWeight: '400'
+                            }}>
+                                United Album
+                            </p>
+                            <p style={{ fontStyle: 'italic', color: '#d4af37', fontSize: '0.95rem', marginTop: '0.5rem' }}>Capture your favorite moments</p>
                         </header>
 
                         {loading ? (
@@ -126,7 +145,7 @@ export default function Home() {
                             </div>
 
                             {challenge && (
-                                <div className="card upload-area">
+                                <div className="card upload-area" style={{ marginTop: '4rem', clear: 'both' }}>
                                     <h2 style={{ fontWeight: '400' }}>Upload for "{challenge.title}"</h2>
                                     <UploadSection folderId={challenge.folderId} poseTitle={challenge.title} />
                                 </div>

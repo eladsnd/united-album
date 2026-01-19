@@ -190,6 +190,54 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
         }
     };
 
+    const movePose = async (index, direction) => {
+        const newPoses = [...poses];
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+
+        if (targetIndex < 0 || targetIndex >= newPoses.length) {
+            return; // Can't move beyond bounds
+        }
+
+        // Swap poses
+        [newPoses[index], newPoses[targetIndex]] = [newPoses[targetIndex], newPoses[index]];
+
+        // Update local state immediately for responsive UI
+        setPoses(newPoses);
+
+        // Send reorder request to server
+        try {
+            const reorderedPoses = newPoses.map((pose, idx) => ({
+                id: pose.id,
+                order: idx,
+            }));
+
+            const res = await fetch('/api/admin/poses/reorder', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`,
+                },
+                body: JSON.stringify({ poses: reorderedPoses }),
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                setSuccessMessage('Pose order updated!');
+                setTimeout(() => setSuccessMessage(''), 2000);
+            } else {
+                // Revert on error
+                fetchPoses();
+                alert('Failed to reorder poses: ' + data.error);
+            }
+        } catch (err) {
+            console.error('[AdminPoseManager] Error reordering poses:', err);
+            // Revert on error
+            fetchPoses();
+            alert('Failed to reorder poses');
+        }
+    };
+
     return (
         <div className="admin-pose-manager">
             <div className="admin-header">
@@ -228,7 +276,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                 </div>
             ) : (
                 <div className="pose-manager-grid">
-                    {poses.map((pose) => (
+                    {poses.map((pose, index) => (
                         <div key={pose.id} className="pose-card-admin card">
                             <div className="pose-image-container">
                                 <Image
@@ -238,6 +286,24 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                                     unoptimized
                                     className="pose-image"
                                 />
+                                <div className="pose-reorder-controls">
+                                    <button
+                                        className="reorder-btn"
+                                        onClick={() => movePose(index, 'up')}
+                                        disabled={index === 0}
+                                        title="Move up"
+                                    >
+                                        ▲
+                                    </button>
+                                    <button
+                                        className="reorder-btn"
+                                        onClick={() => movePose(index, 'down')}
+                                        disabled={index === poses.length - 1}
+                                        title="Move down"
+                                    >
+                                        ▼
+                                    </button>
+                                </div>
                             </div>
                             <div className="pose-card-content">
                                 <h3 style={{ fontWeight: '500', marginBottom: '0.5rem' }}>

@@ -59,10 +59,12 @@ model Challenge {
   instruction String
   image       String
   folderId    String?
+  order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([title])
+  @@index([order])
 }
 
 model PhotoLike {
