@@ -87,9 +87,6 @@ export default function Home() {
                         ) : challengesData.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '4rem' }}>
                                 <p>No pose challenges available yet.</p>
-                                <p style={{ fontSize: '0.9rem', opacity: 0.7, marginTop: '1rem' }}>
-                                    Admin can add poses at /admin
-                                </p>
                             </div>
                         ) : (
                             <div className="pose-carousel-container">
