@@ -126,43 +126,9 @@ export default function UploadSection({ folderId, poseTitle }) {
         setRetryCount(0);
 
         try {
-            // NEW FLOW with Smart Cropping:
-            // 1. Detect faces (for smart crop)
-            // 2. Smart crop to center on pose
-            // 3. Upload cropped image
-            // 4. Re-detect faces on uploaded version (for accurate coordinates)
-
+            // Upload original uncropped image
+            // Face detection will run on the uploaded version to get accurate coordinates
             let fileToUpload = file;
-
-            // Step 1: Smart crop if face detection is available (10% progress)
-            if (modelsReady) {
-                try {
-                    setStatus('analyzing');
-                    console.log('[Upload] Detecting faces for smart crop...');
-
-                    const initialFaceDetection = await detectFaceInBrowser(file);
-                    setUploadProgress(10);
-
-                    if (initialFaceDetection.boxes && initialFaceDetection.boxes.length > 0) {
-                        console.log('[Upload] Applying smart crop for', initialFaceDetection.boxes.length, 'face(s)');
-                        const cropResult = await smartCropImage(file, initialFaceDetection.boxes, {
-                            targetAspectRatio: 4/3,
-                            paddingMultiplier: 2.5,
-                        });
-
-                        if (cropResult.croppedBlob) {
-                            fileToUpload = new File([cropResult.croppedBlob], file.name, { type: 'image/jpeg' });
-                            console.log('[Upload] Smart crop applied:', cropResult.cropMetadata);
-                            toast.showInfo('Photo auto-framed for best composition');
-                        } else {
-                            console.log('[Upload] No crop needed - composition already good');
-                        }
-                    }
-                } catch (cropError) {
-                    console.warn('[Upload] Smart crop failed, using original:', cropError);
-                    // Continue with original file if cropping fails
-                }
-            }
 
             setUploadProgress(20);
 
