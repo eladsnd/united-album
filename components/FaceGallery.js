@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import challengesData from '../data/challenges.json';
 import { Download, Heart, Loader2 } from 'lucide-react';
 import { getUserId } from '../lib/utils/getUserId';
 import ImageModal from './ImageModal';
@@ -22,6 +21,7 @@ function GallerySkeleton() {
 export default function AlbumGallery() {
     const [photos, setPhotos] = useState([]);
     const [faceThumbnails, setFaceThumbnails] = useState([]);
+    const [challenges, setChallenges] = useState([]); // Pose challenges from database
     const [faceFilter, setFaceFilter] = useState('all');
     const [poseFilter, setPoseFilter] = useState('all');
     const [likeFilter, setLikeFilter] = useState('all'); // 'all' or 'liked'
@@ -216,6 +216,17 @@ export default function AlbumGallery() {
 
     useEffect(() => {
         fetchPhotos();
+
+        // Fetch challenges from database
+        fetch('/api/admin/poses')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setChallenges(data.data);
+                }
+            })
+            .catch(err => console.error('Failed to fetch challenges:', err));
+
         window.addEventListener('photoUploaded', fetchPhotos);
         return () => window.removeEventListener('photoUploaded', fetchPhotos);
     }, []);
@@ -413,8 +424,8 @@ export default function AlbumGallery() {
                     <div className="filter-chips">
                         <button className={`chip ${poseFilter === 'all' ? 'active' : ''}`} onClick={() => setPoseFilter('all')}>All Poses</button>
                         {uniquePoses.map(poseId => {
-                            // Find the pose title from challenges.json
-                            const challenge = challengesData.find(c => c.id === poseId);
+                            // Find the pose title from database
+                            const challenge = challenges.find(c => c.id === poseId);
                             const displayName = challenge ? challenge.title : poseId;
 
                             return (
