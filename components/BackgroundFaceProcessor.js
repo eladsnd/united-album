@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { detectFacesMultiModel } from '../utils/clientFaceDetection';
+import { detectFaceInBrowser } from '../utils/clientFaceDetection';
 
 /**
  * Background Face Processor
@@ -63,32 +63,37 @@ export default function BackgroundFaceProcessor() {
                     const imgRes = await fetch(photo.url);
                     const blob = await imgRes.blob();
 
-                    // Create image element
-                    const img = new Image();
-                    const imageUrl = URL.createObjectURL(blob);
+                    // Convert blob to File object (required by detectFaceInBrowser)
+                    const file = new File([blob], `photo_${photo.id}.jpg`, { type: blob.type });
 
-                    await new Promise((resolve, reject) => {
-                        img.onload = () => resolve();
-                        img.onerror = () => reject(new Error('Failed to load image'));
-                        img.src = imageUrl;
-                    });
+                    // Detect faces using the same function as regular uploads
+                    const faceResults = await detectFaceInBrowser(file);
 
-                    // Detect faces
-                    const faceResults = await detectFacesMultiModel(img);
+                    console.log(`[BgFaceProcessor] Detected ${faceResults?.faceIds?.length || 0} faces in photo ${photo.id}`);
 
-                    console.log(`[BgFaceProcessor] Detected ${faceResults?.length || 0} faces in photo ${photo.id}`);
+                    // Extract face data from results
+                    const faceIds = faceResults?.faceIds || [];
+                    const faceBoxes = faceResults?.boxes || [];
+                    const mainFaceId = faceResults?.mainFaceId || 'unknown';
+                    const faceThumbnails = faceResults?.faceThumbnails || [];
 
-                    // Extract face data
-                    const faceIds = faceResults?.map(f => f.faceId) || [];
-                    const faceBoxes = faceResults?.map(f => f.box) || [];
-                    const mainFaceId = faceResults?.[0]?.faceId || 'unknown';
-
-                    // Update photo metadata
+                    // Update photo metadata with face data and thumbnails
                     const updateFormData = new FormData();
                     updateFormData.append('photoId', photo.id.toString());
                     updateFormData.append('faceIds', JSON.stringify(faceIds));
                     updateFormData.append('mainFaceId', mainFaceId);
                     updateFormData.append('faceBoxes', JSON.stringify(faceBoxes));
+
+                    // Attach face thumbnails if any were extracted
+                    faceThumbnails.forEach((thumbnail, index) => {
+                        if (thumbnail && thumbnail.blob) {
+                            updateFormData.append(
+                                `faceThumbnail_${thumbnail.faceId}`,
+                                thumbnail.blob,
+                                `face_${thumbnail.faceId}_thumb.jpg`
+                            );
+                        }
+                    });
 
                     const updateRes = await fetch('/api/update-faces', {
                         method: 'POST',
@@ -100,9 +105,6 @@ export default function BackgroundFaceProcessor() {
                     } else {
                         console.error(`[BgFaceProcessor] ✗ Failed to update photo ${photo.id}`);
                     }
-
-                    // Cleanup
-                    URL.revokeObjectURL(imageUrl);
 
                     // Small delay between photos to avoid overwhelming the browser
                     await new Promise(resolve => setTimeout(resolve, 1000));
