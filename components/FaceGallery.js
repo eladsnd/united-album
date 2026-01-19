@@ -660,6 +660,10 @@ export default function AlbumGallery() {
                     imageUrl={modalImage.url}
                     altText="Wedding Photo"
                     downloadUrl={modalImage.downloadUrl}
+                    photoId={modalImage.photoId}
+                    isLiked={likedPhotos.has(modalImage.photoId)}
+                    likeCount={likeCounts[modalImage.photoId] || 0}
+                    onToggleLike={toggleLike}
                     onClose={() => setModalImage(null)}
                     onNext={() => {
                         const currentIndex = filteredPhotos.findIndex(p => p.id === modalImage.photoId);

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect } from 'react';
-import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Download, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
 
-export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, onNext, onPrev, hasNext, hasPrev }) {
+export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, onNext, onPrev, hasNext, hasPrev, photoId, isLiked, likeCount, onToggleLike }) {
   // Close on ESC key, navigate with arrow keys
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -49,6 +49,20 @@ export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, on
           <Download size={24} />
           Download
         </a>
+      )}
+
+      {photoId && onToggleLike && (
+        <button
+          className={`modal-like-btn ${isLiked ? 'liked' : ''}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onToggleLike(photoId);
+          }}
+          aria-label={isLiked ? 'Unlike photo' : 'Like photo'}
+        >
+          <Heart size={24} fill={isLiked ? 'currentColor' : 'none'} />
+          {likeCount > 0 && <span className="modal-like-count">{likeCount}</span>}
+        </button>
       )}
 
       <div

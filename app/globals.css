@@ -1870,6 +1870,59 @@ img.face-thumb-img {
   box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
 }
 
+/* Modal Like Button */
+.modal-like-btn {
+  position: absolute;
+  bottom: 2rem;
+  right: 2rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 1rem;
+  border-radius: 50%;
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10000;
+}
+
+.modal-like-btn.liked {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.modal-like-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+}
+
+.modal-like-btn.liked:hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.6);
+}
+
+.modal-like-count {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-width: 24px;
+  height: 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 @media (max-width: 768px) {
   .modal-close-btn {
     top: 1rem;
@@ -1897,6 +1950,13 @@ img.face-thumb-img {
 
   .modal-next-btn {
     right: 10px;
+  }
+
+  .modal-like-btn {
+    bottom: 1rem;
+    right: 1rem;
+    width: 56px;
+    height: 56px;
   }
 }
 
