@@ -564,7 +564,11 @@ export default function AlbumGallery() {
                         <div
                             key={photo.id}
                             className={`photo-card ${isDeleting ? 'deleting' : ''}`}
-                            onClick={() => setModalImage({ url: photo.url, downloadUrl: `/api/download/${photo.driveId}` })}
+                            onClick={() => setModalImage({
+                                url: photo.url,
+                                downloadUrl: `/api/download/${photo.driveId}`,
+                                photoId: photo.id
+                            })}
                             style={{ cursor: 'pointer' }}
                         >
                             {isDeleting && (
@@ -646,6 +650,36 @@ export default function AlbumGallery() {
                     altText="Wedding Photo"
                     downloadUrl={modalImage.downloadUrl}
                     onClose={() => setModalImage(null)}
+                    onNext={() => {
+                        const currentIndex = filteredPhotos.findIndex(p => p.id === modalImage.photoId);
+                        if (currentIndex < filteredPhotos.length - 1) {
+                            const nextPhoto = filteredPhotos[currentIndex + 1];
+                            setModalImage({
+                                url: nextPhoto.url,
+                                downloadUrl: `/api/download/${nextPhoto.driveId}`,
+                                photoId: nextPhoto.id
+                            });
+                        }
+                    }}
+                    onPrev={() => {
+                        const currentIndex = filteredPhotos.findIndex(p => p.id === modalImage.photoId);
+                        if (currentIndex > 0) {
+                            const prevPhoto = filteredPhotos[currentIndex - 1];
+                            setModalImage({
+                                url: prevPhoto.url,
+                                downloadUrl: `/api/download/${prevPhoto.driveId}`,
+                                photoId: prevPhoto.id
+                            });
+                        }
+                    }}
+                    hasNext={() => {
+                        const currentIndex = filteredPhotos.findIndex(p => p.id === modalImage.photoId);
+                        return currentIndex < filteredPhotos.length - 1;
+                    }}
+                    hasPrev={() => {
+                        const currentIndex = filteredPhotos.findIndex(p => p.id === modalImage.photoId);
+                        return currentIndex > 0;
+                    }}
                 />
             )}
         </div>

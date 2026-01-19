@@ -824,20 +824,41 @@ img.face-thumb-img {
 
 @media (max-width: 768px) {
   .carousel-wrapper {
-    padding: 0 1rem;
+    padding: 0 2.5rem;
   }
 
+  .carousel-item {
+    width: 240px;
+  }
+
+  /* Show carousel effect on mobile with smaller scale */
   .carousel-item.prev-item,
   .carousel-item.next-item {
-    display: none;
+    transform: translate3d(0, 0, -50px) scale(0.7);
+    opacity: 0.3;
+    z-index: 5;
+    filter: blur(2px);
+  }
+
+  .carousel-item.prev-item {
+    transform: translate3d(-90%, 0, -50px) rotateY(25deg) scale(0.7);
+  }
+
+  .carousel-item.next-item {
+    transform: translate3d(90%, 0, -50px) rotateY(-25deg) scale(0.7);
   }
 
   .carousel-item.active {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 80px) scale(0.95);
   }
 
   .carousel-track-container {
-    height: 480px;
+    height: 420px;
+  }
+
+  .carousel-nav {
+    width: 48px;
+    height: 48px;
   }
 
   /* Mobile face thumbnails */
@@ -1706,11 +1727,49 @@ img.face-thumb-img {
   z-index: 9999;
   cursor: zoom-out;
   animation: fadeIn 0.3s ease-out;
+  overflow-y: auto;
 }
 
 .image-modal-content {
   cursor: default;
   animation: zoomIn 0.3s ease-out;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Modal Navigation Buttons */
+.modal-nav-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  z-index: 10001;
+}
+
+.modal-nav-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-50%) scale(1.1);
+}
+
+.modal-prev-btn {
+  left: -80px;
+}
+
+.modal-next-btn {
+  right: -80px;
 }
 
 @keyframes zoomIn {
@@ -1784,5 +1843,19 @@ img.face-thumb-img {
     left: 1rem;
     padding: 0.75rem 1rem;
     font-size: 0.9rem;
+  }
+
+  /* Mobile modal navigation - inside the image area */
+  .modal-nav-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  .modal-prev-btn {
+    left: 10px;
+  }
+
+  .modal-next-btn {
+    right: 10px;
   }
 }

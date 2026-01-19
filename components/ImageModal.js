@@ -1,16 +1,18 @@
 "use client";
 import { useEffect } from 'react';
-import { X, Download } from 'lucide-react';
+import { X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function ImageModal({ imageUrl, altText, onClose, downloadUrl }) {
-  // Close on ESC key
+export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, onNext, onPrev, hasNext, hasPrev }) {
+  // Close on ESC key, navigate with arrow keys
   useEffect(() => {
-    const handleEsc = (e) => {
+    const handleKeyDown = (e) => {
       if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowRight' && hasNext && onNext) onNext();
+      if (e.key === 'ArrowLeft' && hasPrev && onPrev) onPrev();
     };
-    document.addEventListener('keydown', handleEsc);
-    return () => document.removeEventListener('keydown', handleEsc);
-  }, [onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, onNext, onPrev, hasNext, hasPrev]);
 
   // Prevent body scroll when modal open
   useEffect(() => {
@@ -53,6 +55,19 @@ export default function ImageModal({ imageUrl, altText, onClose, downloadUrl }) 
         className="image-modal-content"
         onClick={(e) => e.stopPropagation()}
       >
+        {hasPrev && (
+          <button
+            className="modal-nav-btn modal-prev-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onPrev();
+            }}
+            aria-label="Previous photo"
+          >
+            <ChevronLeft size={32} />
+          </button>
+        )}
+
         <img
           src={imageUrl}
           alt={altText}
@@ -66,6 +81,19 @@ export default function ImageModal({ imageUrl, altText, onClose, downloadUrl }) 
             display: 'block'
           }}
         />
+
+        {hasNext && (
+          <button
+            className="modal-nav-btn modal-next-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              onNext();
+            }}
+            aria-label="Next photo"
+          >
+            <ChevronRight size={32} />
+          </button>
+        )}
       </div>
     </div>
   );
