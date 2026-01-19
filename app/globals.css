@@ -1765,7 +1765,7 @@ img.face-thumb-img {
   z-index: 9999;
   cursor: zoom-out;
   animation: fadeIn 0.3s ease-out;
-  overflow-y: auto;
+  padding: 2rem;
 }
 
 .image-modal-content {
@@ -1775,6 +1775,8 @@ img.face-thumb-img {
   display: flex;
   align-items: center;
   justify-content: center;
+  max-height: 100%;
+  max-width: 100%;
 }
 
 /* Modal Navigation Buttons */
