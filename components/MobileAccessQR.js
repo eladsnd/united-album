@@ -6,19 +6,11 @@ export default function MobileAccessQR() {
     const canvasRef = useRef(null);
 
     useEffect(() => {
-        const fetchIPAndGenerateQR = async () => {
+        const generateQR = async () => {
             if (!canvasRef.current) return;
 
-            let terminalUrl = window.location.href;
-            try {
-                const res = await fetch('/api/config');
-                const { localIP } = await res.json();
-                if (localIP && localIP !== 'localhost') {
-                    terminalUrl = `http://${localIP}:3000`;
-                }
-            } catch (err) {
-                console.error('Failed to fetch local IP:', err);
-            }
+            // Use current window location for QR code
+            const terminalUrl = window.location.href;
 
             QRCode.toCanvas(canvasRef.current, terminalUrl, {
                 width: 150,
@@ -32,7 +24,7 @@ export default function MobileAccessQR() {
             });
         };
 
-        fetchIPAndGenerateQR();
+        generateQR();
     }, []);
 
     return (
