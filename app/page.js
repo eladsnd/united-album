@@ -11,23 +11,24 @@ import BulkUpload from '../components/BulkUpload';
 import BackgroundFaceProcessor from '../components/BackgroundFaceProcessor';
 
 export default function Home() {
-    // Persist active section across page refreshes
-    const [activeSection, setActiveSection] = useState(() => {
-        if (typeof window !== 'undefined') {
-            return localStorage.getItem('activeSection') || 'challenge';
-        }
-        return 'challenge';
-    });
+    // Always start with 'challenge' on server to avoid hydration mismatch
+    const [activeSection, setActiveSection] = useState('challenge');
     const [currentIndex, setCurrentIndex] = useState(-1);
     const [challengesData, setChallengesData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [modalImage, setModalImage] = useState(null);
 
+    // Load persisted section from localStorage after hydration
+    useEffect(() => {
+        const savedSection = localStorage.getItem('activeSection');
+        if (savedSection) {
+            setActiveSection(savedSection);
+        }
+    }, []);
+
     // Save active section to localStorage when it changes
     useEffect(() => {
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('activeSection', activeSection);
-        }
+        localStorage.setItem('activeSection', activeSection);
     }, [activeSection]);
 
     // Fetch challenges from database API

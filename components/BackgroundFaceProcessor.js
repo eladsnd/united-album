@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { detectFaceInBrowser } from '../utils/clientFaceDetection';
 
 /**
@@ -24,21 +24,7 @@ export default function BackgroundFaceProcessor() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
 
-    // Listen for custom events triggered by bulk upload
-    useEffect(() => {
-        const handleUploadComplete = () => {
-            console.log('[BgFaceProcessor] Upload complete event received, starting face processing...');
-            processPendingPhotos();
-        };
-
-        window.addEventListener('bulk-upload-complete', handleUploadComplete);
-
-        return () => {
-            window.removeEventListener('bulk-upload-complete', handleUploadComplete);
-        };
-    }, []);
-
-    const processPendingPhotos = async () => {
+    const processPendingPhotos = useCallback(async () => {
         if (isProcessing) {
             console.log('[BgFaceProcessor] Already processing, skipping...');
             return;
@@ -100,7 +86,7 @@ export default function BackgroundFaceProcessor() {
                     // Update photo metadata with face data and thumbnails
                     const updateFormData = new FormData();
                     updateFormData.append('photoId', photo.id.toString());
-                    updateFormData.append('faceIds', JSON.stringify(faceIds));
+                    updateFormData.append('faceIds', faceIds.join(','));
                     updateFormData.append('mainFaceId', mainFaceId);
                     updateFormData.append('faceBoxes', JSON.stringify(faceBoxes));
 
@@ -141,7 +127,21 @@ export default function BackgroundFaceProcessor() {
         } finally {
             setIsProcessing(false);
         }
-    };
+    }, [isProcessing]);
+
+    // Listen for custom events triggered by bulk upload
+    useEffect(() => {
+        const handleUploadComplete = () => {
+            console.log('[BgFaceProcessor] Upload complete event received, starting face processing...');
+            processPendingPhotos();
+        };
+
+        window.addEventListener('bulk-upload-complete', handleUploadComplete);
+
+        return () => {
+            window.removeEventListener('bulk-upload-complete', handleUploadComplete);
+        };
+    }, [processPendingPhotos]);
 
     // Fallback: Check for pending photos periodically (less frequent now)
     // This catches any photos that might have been missed by the event system
@@ -156,7 +156,7 @@ export default function BackgroundFaceProcessor() {
             clearTimeout(initialTimer);
             clearInterval(interval);
         };
-    }, []);
+    }, [processPendingPhotos]);
 
     // This component renders nothing - it's purely background processing
     return null;

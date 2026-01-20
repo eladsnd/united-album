@@ -1,8 +1,7 @@
 "use strict";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { detectFaceInBrowser, loadFaceModels } from '../utils/clientFaceDetection';
-import { smartCropImage } from '../utils/smartCrop';
 import { useToast } from './ToastContainer';
 
 export default function UploadSection({ folderId, poseTitle }) {
@@ -109,7 +108,7 @@ export default function UploadSection({ folderId, poseTitle }) {
         }
     };
 
-    const handleUpload = async (e) => {
+    const handleUpload = useCallback(async (e) => {
         const file = e.target.files[0];
         if (!file || isUploading) {
             if (isUploading) {
@@ -244,7 +243,7 @@ export default function UploadSection({ folderId, poseTitle }) {
         } finally {
             setIsUploading(false);
         }
-    };
+    }, [isUploading, modelsReady, folderId, poseTitle, uploadWithRetry, toast]);
 
     const reset = () => {
         setStatus('idle');

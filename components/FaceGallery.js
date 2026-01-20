@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import { Download, Heart, Loader2 } from 'lucide-react';
 import { getUserId } from '../lib/utils/getUserId';
@@ -296,13 +296,20 @@ export default function AlbumGallery() {
     const getLikeCount = (photoId) => likeCounts[photoId] || 0;
 
     // Calculate smart object-position based on face locations
-    const getObjectPosition = (faceBoxes) => {
+    const getObjectPosition = useCallback((faceBoxes) => {
         if (!faceBoxes || faceBoxes.length === 0) {
             return 'center center'; // Default for photos without faces
         }
 
         try {
-            const boxes = typeof faceBoxes === 'string' ? JSON.parse(faceBoxes) : faceBoxes;
+            let boxes;
+            try {
+                boxes = typeof faceBoxes === 'string' ? JSON.parse(faceBoxes) : faceBoxes;
+            } catch (parseError) {
+                console.error('[FaceGallery] Failed to parse faceBoxes:', parseError);
+                return 'center center';
+            }
+
             if (!Array.isArray(boxes) || boxes.length === 0) {
                 return 'center center';
             }
@@ -341,7 +348,7 @@ export default function AlbumGallery() {
             console.error('[FaceGallery] Error calculating object position:', err);
             return 'center center';
         }
-    };
+    }, []);
 
     const handleDownloadAlbum = async (downloadType = 'filtered') => {
         setDownloading(true);
@@ -393,14 +400,16 @@ export default function AlbumGallery() {
 
         ;
 
-    const filteredPhotos = photos.filter(p => {
-        // Filter by ANY face in photo (not just main face)
-        const faceIds = p.faceIds || [p.mainFaceId || p.faceId || 'unknown'];
-        const faceMatch = faceFilter === 'all' || faceIds.includes(faceFilter);
-        const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
-        const likeMatch = likeFilter === 'all' || likedPhotos.has(p.id);
-        return faceMatch && poseMatch && likeMatch;
-    });
+    const filteredPhotos = useMemo(() => {
+        return photos.filter(p => {
+            // Filter by ANY face in photo (not just main face)
+            const faceIds = p.faceIds || [p.mainFaceId || p.faceId || 'unknown'];
+            const faceMatch = faceFilter === 'all' || faceIds.includes(faceFilter);
+            const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
+            const likeMatch = likeFilter === 'all' || likedPhotos.has(p.id);
+            return faceMatch && poseMatch && likeMatch;
+        });
+    }, [photos, faceFilter, poseFilter, likeFilter, likedPhotos]);
 
     return (
         <div className="face-gallery card" style={{ marginTop: '2rem' }}>
