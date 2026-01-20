@@ -9,8 +9,8 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL") // Will be set to PostgreSQL URL by Vercel Postgres addon
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model Photo {
