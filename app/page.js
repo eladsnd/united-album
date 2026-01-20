@@ -106,7 +106,7 @@ export default function Home() {
                             </div>
                         ) : (
                             <div className="pose-carousel-container">
-                            <h2 style={{ fontWeight: '400', marginBottom: '3rem', textAlign: 'center', letterSpacing: '1px' }}>Pick a Pose Challenge</h2>
+                            <h2 style={{ fontWeight: '400', marginBottom: '3rem', marginTop: '2rem', textAlign: 'center', letterSpacing: '1px', position: 'relative', zIndex: 10 }}>Pick a Pose Challenge</h2>
 
                             <div className="carousel-wrapper">
                                 <button className="carousel-nav prev" onClick={prevChallenge} aria-label="Previous Challenge">
