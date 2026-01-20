@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "DATABASE_URL=\"${DATABASE_URL:-file:./dev.db}\" prisma generate && if [ -n \"$DATABASE_URL\" ]; then prisma migrate deploy; fi && next build",
+    "build": "DATABASE_URL=\"${DATABASE_URL:-file:./dev.db}\" prisma generate && if [ -n \"$DATABASE_URL\" ]; then prisma db push --accept-data-loss --skip-generate; fi && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
