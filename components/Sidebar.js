@@ -6,7 +6,7 @@ export default function Sidebar({ activeSection, setActiveSection }) {
     const menuItems = [
         { id: 'challenge', label: 'Pose Challenge', icon: Camera },
         { id: 'gallery', label: 'Album Gallery', icon: Image },
-        { id: 'bulk-upload', label: 'Bulk Upload', icon: Upload },
+        { id: 'bulk-upload', label: 'Regular Photos', icon: Upload },
         { id: 'access', label: 'App Access', icon: Smartphone }
     ];
 

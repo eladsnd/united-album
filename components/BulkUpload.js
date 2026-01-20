@@ -170,9 +170,12 @@ export default function BulkUpload() {
     return (
         <div className="bulk-upload-container">
             <header style={{ marginBottom: '2rem', textAlign: 'center' }}>
-                <h1 style={{ fontWeight: '400', marginBottom: '0.5rem' }}>Bulk Upload</h1>
+                <h1 style={{ fontWeight: '400', marginBottom: '0.5rem' }}>Bulk Upload - Regular Photos</h1>
                 <p style={{ opacity: 0.7, fontSize: '0.95rem' }}>
-                    Upload multiple photos and videos at once
+                    Upload multiple photos and videos without pose challenges
+                </p>
+                <p style={{ opacity: 0.5, fontSize: '0.85rem', marginTop: '0.5rem' }}>
+                    Face detection will run automatically in the background
                 </p>
             </header>
 
