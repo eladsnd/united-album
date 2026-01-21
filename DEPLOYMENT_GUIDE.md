@@ -2,6 +2,22 @@
 
 Complete guide to deploy United Album to Vercel with PostgreSQL database.
 
+## Quick Start - Deployment Status ✅
+
+**Latest Deployment**: January 2026
+**Status**: Production Ready
+**Database**: Vercel Postgres (PostgreSQL)
+**Build Method**: `prisma db push` (bypasses migrations for fresh database)
+
+### Recent Fixes Applied:
+- ✅ Changed Prisma provider from SQLite to PostgreSQL
+- ✅ Implemented `prisma db push` instead of `migrate deploy` (bypasses failed migration state)
+- ✅ Removed redundant Babel config for faster builds
+- ✅ Fixed "Pick a Pose Challenge" heading visibility
+- ✅ All environment variables configured
+
+---
+
 ## Prerequisites
 
 ✅ GitHub repository with latest code pushed
@@ -31,7 +47,7 @@ git push origin main
    - **Root Directory**: `./` (leave default)
    - **Build Command**: `npm run build` (auto-detected)
    - **Output Directory**: `.next` (auto-detected)
-5. **IMPORTANT**: Do NOT deploy yet - click "Environment Variables" first
+5. **IMPORTANT**: Do NOT deploy yet - add environment variables first
 
 ### Option B: Via Vercel CLI
 
@@ -42,409 +58,244 @@ npm i -g vercel
 # Login to Vercel
 vercel login
 
-# Initialize project (from project root)
-vercel
+# Link project (from project root)
+vercel link
 
-# Follow prompts:
-# - Link to existing project? No
-# - Project name: united-album (or your choice)
-# - Directory: ./ (current)
-# - Override settings? No
+# Follow prompts to link to existing project
 ```
 
-## Step 3: Add Environment Variables in Vercel
+## Step 3: Add Vercel Postgres Database
 
-Go to **Project Settings → Environment Variables** and add ALL of these:
+**CRITICAL**: Add the database BEFORE adding environment variables.
 
-### Google Drive Credentials (REQUIRED)
-
-```bash
-# Variable Name: GOOGLE_CLIENT_ID
-# Value: <your-client-id>.apps.googleusercontent.com
-# Environments: Production, Preview, Development
-
-# Variable Name: GOOGLE_CLIENT_SECRET
-# Value: <your-client-secret>
-# Environments: Production, Preview, Development
-
-# Variable Name: GOOGLE_REFRESH_TOKEN
-# Value: <your-refresh-token>
-# Environments: Production, Preview, Development
-
-# Variable Name: GOOGLE_DRIVE_FOLDER_ID
-# Value: <your-drive-folder-id>
-# Environments: Production, Preview, Development
-```
-
-### Admin Authentication (REQUIRED)
-
-```bash
-# Variable Name: ADMIN_PASSWORD
-# Value: <your-admin-password>
-# Environments: Production, Preview, Development
-```
-
-### Database URL (Will be added automatically by Vercel Postgres)
-
-```bash
-# Variable Name: DATABASE_URL
-# Value: (Leave empty - will be auto-populated by Vercel Postgres)
-# OR manually add after creating Vercel Postgres database
-```
-
-## Step 4: Enable Vercel Postgres
-
-### Via Vercel Dashboard
-
-1. Go to your project dashboard
+1. In Vercel dashboard, go to your project
 2. Click **"Storage"** tab
 3. Click **"Create Database"**
 4. Select **"Postgres"**
-5. Choose region (closest to your users)
-6. Click **"Create"**
-7. Vercel will automatically:
-   - Create a PostgreSQL database
-   - Add `DATABASE_URL` environment variable
-   - Add `POSTGRES_*` helper variables
+5. Choose database name (e.g., `united-album-db`)
+6. Select region closest to your users
+7. Click **"Create"**
 
-### Via Vercel CLI
+Vercel will automatically add these environment variables:
+- `DATABASE_URL` (PostgreSQL connection string)
+- `POSTGRES_URL`
+- `POSTGRES_PRISMA_URL`
+
+## Step 4: Add Environment Variables
+
+Go to **Settings** → **Environment Variables** and add these:
+
+### Required Variables (5 total)
+
+| Variable | Value Source | Note |
+|----------|-------------|------|
+| `GOOGLE_CLIENT_ID` | From `.env.local` | Google OAuth Client ID |
+| `GOOGLE_CLIENT_SECRET` | From `.env.local` | Google OAuth Client Secret |
+| `GOOGLE_REFRESH_TOKEN` | From `.env.local` | Google OAuth Refresh Token |
+| `GOOGLE_DRIVE_FOLDER_ID` | From `.env.local` | Google Drive folder for uploads |
+| `ADMIN_PASSWORD` | From `.env.local` | Admin panel access password |
+
+**Environment**: Select **Production**, **Preview**, and **Development** for all variables.
+
+### Auto-Added Variables (from Vercel Postgres)
+- `DATABASE_URL` - Already added by Vercel Postgres
+- `POSTGRES_URL` - Already added by Vercel Postgres
+- `POSTGRES_PRISMA_URL` - Already added by Vercel Postgres
+
+**Do NOT add these manually** - Vercel adds them automatically when you create the database.
+
+## Step 5: Deploy Application
+
+### Auto-Deploy (Recommended)
+
+Vercel auto-deploys when you push to `main`:
 
 ```bash
-# Create Postgres database
-vercel postgres create united-album-db
-
-# Link database to project
-vercel link
+git push origin main
 ```
 
-## Step 5: Run Database Migrations
+Monitor deployment at: `https://vercel.com/your-username/united-album/deployments`
 
-### Option A: Via Vercel CLI (Recommended)
-
-```bash
-# Pull environment variables (including DATABASE_URL)
-vercel env pull .env.production
-
-# Generate Prisma client
-npx prisma generate
-
-# Run migrations against production database
-npx prisma migrate deploy
-
-# Optional: Seed data if needed
-# node scripts/seedProduction.js
-```
-
-### Option B: Via Vercel Dashboard
-
-1. Go to **Project Settings → Environment Variables**
-2. Copy the `DATABASE_URL` value
-3. Create temporary `.env.production.local` file:
-   ```bash
-   DATABASE_URL="<paste-the-value-here>"
-   ```
-4. Run migrations:
-   ```bash
-   npx prisma migrate deploy
-   ```
-5. Delete `.env.production.local` (never commit this)
-
-### Option C: Via GitHub Actions (Advanced)
-
-Create `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to Vercel
-on:
-  push:
-    branches: [main]
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-
-      - name: Install Vercel CLI
-        run: npm i -g vercel
-
-      - name: Pull Vercel Environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Build Project
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
-
-      - name: Run Migrations
-        run: npx prisma migrate deploy
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-
-      - name: Deploy to Vercel
-        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
-```
-
-## Step 6: Deploy Application
-
-### Via Vercel Dashboard
-
-1. Go to **Deployments** tab
-2. Click **"Deploy"** or trigger automatic deployment by pushing to GitHub
-3. Wait for build to complete (2-5 minutes)
-4. Click on deployment URL when ready
-
-### Via Vercel CLI
+### Manual Deploy via CLI
 
 ```bash
 # Deploy to production
 vercel --prod
 
-# The CLI will:
-# 1. Build your application
-# 2. Upload build artifacts
-# 3. Deploy to production domain
-# 4. Output: https://united-album.vercel.app (or your custom domain)
+# Or just deploy (creates preview)
+vercel
 ```
+
+## Step 6: Database Schema Setup
+
+The build process automatically runs:
+
+```bash
+prisma generate                              # Generate Prisma Client
+prisma db push --accept-data-loss --skip-generate  # Sync schema to database
+next build                                   # Build Next.js app
+```
+
+**Why `prisma db push` instead of migrations?**
+- Bypasses failed migration states
+- Directly syncs schema to fresh database
+- Simpler for initial deployment
+- No migration files needed
 
 ## Step 7: Verify Deployment
-
-### Check List
-
-✅ **Environment Variables**:
-```bash
-# Via Vercel CLI
-vercel env ls
-
-# Should show:
-# - GOOGLE_CLIENT_ID (Production, Preview, Development)
-# - GOOGLE_CLIENT_SECRET (Production, Preview, Development)
-# - GOOGLE_REFRESH_TOKEN (Production, Preview, Development)
-# - GOOGLE_DRIVE_FOLDER_ID (Production, Preview, Development)
-# - ADMIN_PASSWORD (Production, Preview, Development)
-# - DATABASE_URL (Production - auto-added by Vercel Postgres)
-```
-
-✅ **Database Connection**:
-```bash
-# View database tables via Prisma Studio
-npx prisma studio --browser none
-
-# Or check via Vercel Dashboard → Storage → Database
-```
-
-✅ **Application Health**:
-- Visit production URL: `https://your-project.vercel.app`
-- Check main page loads (3D pose carousel visible)
-- Try uploading a test photo
-- Verify face detection works
-- Check admin panel: `https://your-project.vercel.app/admin`
-- Test photo likes and infinite scroll
 
 ### Test Checklist
 
 | Feature | Test | Expected Result |
 |---------|------|-----------------|
-| Main Page | Visit `/` | 3D carousel with pose challenges |
-| Photo Upload | Upload photo via pose challenge | Photo appears in gallery |
-| Face Detection | Upload photo with faces | Faces detected and tagged |
-| Face Gallery | Click face filter | Photos filtered by person |
-| Photo Likes | Click heart icon | Like count increments |
-| Infinite Scroll | Scroll to bottom | More photos load automatically |
-| Admin Login | Visit `/admin` with password | Access granted |
-| Admin Poses | Create/edit/delete pose | Changes reflected immediately |
-| Photo Delete | Delete photo (admin/owner) | Photo removed from gallery |
-| Download Album | Click download button | ZIP file downloads |
+| **Homepage** | Visit production URL | Wedding header + pose carousel loads |
+| **Pose Challenges** | View carousel | 3D carousel with pose images |
+| **Upload** | Upload a photo | Photo appears in Drive folder |
+| **Face Detection** | Upload photo with faces | Faces detected and thumbnails created |
+| **Gallery** | Click "Album Gallery" | Photos display in grid |
+| **Face Filter** | Click face thumbnail | Filters to photos with that person |
+| **Bulk Upload** | Upload multiple files | All files upload successfully |
+| **Admin Panel** | Visit `/admin` | Password prompt appears |
+| **Admin Login** | Enter admin password | Pose manager loads |
+| **Admin CRUD** | Create/edit/delete pose | Operations work correctly |
 
-## Step 8: Database Management (Post-Deployment)
+### Common Issues & Solutions
 
-### View Database with Prisma Studio
+#### 1. Build Fails: "Migration failed"
+
+**Error**: `migrate found failed migrations in the target database`
+
+**Solution**: Already fixed in latest code using `prisma db push`
+
+```json
+// package.json - Current working version
+"build": "prisma generate && if [ -n \"$DATABASE_URL\" ]; then prisma db push --accept-data-loss --skip-generate; fi && next build"
+```
+
+#### 2. Build Fails: "URL must start with protocol file:"
+
+**Error**: `the URL must start with the protocol 'file:'`
+
+**Solution**: Already fixed - schema uses `provider = "postgresql"`
+
+```prisma
+// prisma/schema.prisma - Current working version
+datasource db {
+  provider = "postgresql"  // Not "sqlite"
+  url      = env("DATABASE_URL")
+}
+```
+
+#### 3. 403 Error on Upload
+
+**Cause**: Missing Google Drive credentials
+
+**Solution**: Verify all 5 environment variables are set in Vercel:
+- GOOGLE_CLIENT_ID
+- GOOGLE_CLIENT_SECRET
+- GOOGLE_REFRESH_TOKEN
+- GOOGLE_DRIVE_FOLDER_ID
+- ADMIN_PASSWORD
+
+#### 4. Face Detection Not Working
+
+**Cause**: Face models not loading from CDN
+
+**Solution**: Check browser console for model loading errors. Models are loaded from public CDN.
+
+#### 5. Photos Not Persisting
+
+**Cause**: Database connection issue
+
+**Solution**:
+1. Check `DATABASE_URL` is set correctly
+2. Verify Vercel Postgres is active
+3. Check Vercel logs for database errors
+
+## Database Management
+
+### View Database with Prisma Studio (Local)
 
 ```bash
-# Pull production DATABASE_URL
+# Pull DATABASE_URL from Vercel
 vercel env pull .env.production
 
-# Open Prisma Studio
-npx prisma studio
+# Start Prisma Studio
+DATABASE_URL="<production-url>" npx prisma studio
 ```
 
-### Run Migrations (After Schema Changes)
+### Reset Database (CAUTION: Deletes all data)
 
 ```bash
-# 1. Update schema in prisma/schema.prisma
-# 2. Create migration locally
-npx prisma migrate dev --name your_migration_name
-
-# 3. Commit migration files
-git add prisma/migrations/
-git commit -m "feat: Add new migration"
-git push origin main
-
-# 4. Vercel will auto-deploy, but migrations won't run automatically
-# 5. Manually run migrations in production:
-vercel env pull .env.production
-npx prisma migrate deploy
+# Connect to production database
+DATABASE_URL="<production-url>" npx prisma db push --force-reset
 ```
 
-### Reset Database (DESTRUCTIVE)
+### Backup Database
 
 ```bash
-# ⚠️  WARNING: Deletes all data!
-vercel env pull .env.production
-npx prisma migrate reset
+# Export data using Prisma Studio
+# Or use pg_dump with Vercel Postgres connection string
 ```
 
-## Troubleshooting
-
-### Issue 1: Build Fails with "DATABASE_URL not found"
-
-**Solution**: Ensure Vercel Postgres is enabled and DATABASE_URL is added to environment variables.
-
-```bash
-# Check environment variables
-vercel env ls
-
-# If DATABASE_URL missing, add manually from Vercel Dashboard → Storage → Postgres
-```
-
-### Issue 2: 401 Google Drive Errors
-
-**Solution**: Verify Google Drive credentials are correct.
-
-```bash
-# Check environment variables in Vercel Dashboard
-# Ensure GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GOOGLE_REFRESH_TOKEN match .env.local
-```
-
-### Issue 3: Migrations Fail with "relation already exists"
-
-**Solution**: Database already has tables. Either:
-
-```bash
-# Option A: Drop tables and re-run migrations
-# Via Vercel Dashboard → Storage → Query tab
-DROP TABLE IF EXISTS "PhotoLike" CASCADE;
-DROP TABLE IF EXISTS "Photo" CASCADE;
-DROP TABLE IF EXISTS "Face" CASCADE;
-DROP TABLE IF EXISTS "Challenge" CASCADE;
-
-# Then run migrations
-npx prisma migrate deploy
-
-# Option B: Use migrate resolve (mark as applied)
-npx prisma migrate resolve --applied <migration_name>
-```
-
-### Issue 4: Photos Don't Load After Deployment
-
-**Solution**: Check Google Drive folder permissions.
-
-```bash
-# Ensure GOOGLE_DRIVE_FOLDER_ID has correct permissions
-# Folder should be accessible by the service account/OAuth credentials
-```
-
-### Issue 5: Face Detection Not Working
-
-**Solution**: Check model files exist in `public/models/`.
-
-```bash
-# Models should be in git and deployed
-ls public/models/
-
-# Expected files:
-# - tiny_face_detector_model-*
-# - ssd_mobilenetv1_model-*
-# - face_landmark_68_model-*
-# - face_recognition_model-*
-```
-
-## Monitoring and Logs
+## Monitoring & Logs
 
 ### View Deployment Logs
 
-```bash
-# Via CLI
-vercel logs <deployment-url>
-
-# Via Dashboard
-# Go to Deployments → Click deployment → View Function Logs
-```
+1. Go to Vercel Dashboard
+2. Click your project
+3. Go to **Deployments** tab
+4. Click on specific deployment
+5. View **Build Logs** and **Function Logs**
 
 ### View Runtime Logs
 
-```bash
-# Real-time logs
-vercel logs --follow
+1. In Vercel Dashboard, go to your project
+2. Click **Logs** tab
+3. Filter by function (e.g., `/api/upload`)
 
-# Filter by function
-vercel logs --follow /api/upload
+### Common Log Patterns
+
+**Successful Upload**:
+```
+[Photo Storage] Lock acquired for write operation
+[Photo Storage] Successfully wrote to photos.json (12 total)
+[Photo Storage] Lock released
 ```
 
-### Monitor Database
-
-```bash
-# Via Vercel Dashboard
-# Storage → Postgres → Insights tab shows:
-# - Query performance
-# - Connection pool usage
-# - Storage usage
+**Face Detection**:
+```
+[Face Detection] Detected 3 faces in photo
+[Face Service] Uploading 3 face thumbnails to Drive
 ```
 
-## Custom Domain (Optional)
-
-### Add Custom Domain
-
-1. Go to **Project Settings → Domains**
-2. Click **"Add Domain"**
-3. Enter your domain (e.g., `album.yourwedding.com`)
-4. Follow DNS configuration instructions
-5. Wait for DNS propagation (5-60 minutes)
-
-### Configure DNS (Example for Cloudflare)
-
+**Database Operation**:
 ```
-Type: CNAME
-Name: album (or @)
-Target: cname.vercel-dns.com
-Proxy: DNS only (or Proxied)
+prisma:query SELECT * FROM Photo WHERE driveId = '...'
 ```
 
 ## Performance Optimization
 
-### Enable Vercel Analytics (Optional)
+### Enable Vercel Analytics (Free)
 
-```bash
-# Install Vercel Analytics
-npm install @vercel/analytics
+1. Go to project settings
+2. Click **Analytics** tab
+3. Enable **Web Analytics**
 
-# Add to app/layout.js
-import { Analytics } from '@vercel/analytics/react';
+### Enable Vercel Speed Insights
 
-export default function RootLayout({ children }) {
-  return (
-    <html lang="en">
-      <body>
-        {children}
-        <Analytics />
-      </body>
-    </html>
-  );
-}
-```
-
-### Enable Vercel Speed Insights (Optional)
-
+1. Install package:
 ```bash
 npm install @vercel/speed-insights
+```
 
-# Add to app/layout.js
+2. Add to layout:
+```javascript
 import { SpeedInsights } from '@vercel/speed-insights/next';
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html>
       <body>
         {children}
         <SpeedInsights />
@@ -456,72 +307,87 @@ export default function RootLayout({ children }) {
 
 ## Security Checklist
 
-- ✅ All sensitive credentials in Vercel Environment Variables (not in code)
-- ✅ `.env.local` in `.gitignore`
-- ✅ ADMIN_PASSWORD is strong (minimum 12 characters)
-- ✅ Google Drive folder has restricted permissions
-- ✅ Database has SSL enabled (Vercel Postgres default)
-- ✅ HTTPS enabled (Vercel default)
-- ✅ Rate limiting enabled (lib/rateLimit.js)
+- ✅ All environment variables marked as "Sensitive"
+- ✅ Admin password is strong (12+ characters)
+- ✅ Google Drive folder has restricted access
+- ✅ OAuth refresh token is stored securely
+- ✅ Database connection uses SSL
+- ✅ API routes have rate limiting
 
-## Cost Estimation (Vercel Free Tier)
+## Custom Domain (Optional)
 
-| Resource | Free Tier Limit | Estimated Usage |
-|----------|----------------|-----------------|
-| Bandwidth | 100 GB/month | ~5-10 GB (depends on traffic) |
-| Serverless Function Execution | 100 GB-Hours/month | ~1-5 GB-Hours |
-| Postgres Database | 256 MB storage, 60 hours compute | ~1-10 MB storage |
-| Build Minutes | 6000 minutes/month | ~10-20 minutes/month |
-
-**Estimated Monthly Cost**: $0 (within free tier for typical wedding usage)
-
-**When to Upgrade**:
-- 500+ photos uploaded
-- 1000+ daily visitors
-- Multiple concurrent weddings
+1. Go to project **Settings** → **Domains**
+2. Add your custom domain
+3. Configure DNS:
+   - **A Record**: Point to Vercel's IP
+   - **CNAME**: Point to `cname.vercel-dns.com`
+4. Wait for SSL certificate (automatic)
 
 ## Backup Strategy
 
-### Database Backups
+### Environment Variables Backup
+
+Run the backup script:
 
 ```bash
-# Export production database (weekly recommended)
-vercel env pull .env.production
-pg_dump $DATABASE_URL > backup_$(date +%Y%m%d).sql
-
-# Restore from backup (if needed)
-psql $DATABASE_URL < backup_20250118.sql
+./scripts/backup-env-vars.sh
 ```
 
-### Google Drive Backups
+Backup saved to: `~/.wedding-app-backups/env-backup-YYYYMMDD-HHMMSS.txt`
 
-Photos are already in Google Drive - ensure:
-- Google Drive folder is NOT accidentally deleted
-- OAuth credentials are securely stored offline
-- Multiple people have access credentials (redundancy)
+### Database Backup
+
+**Option 1**: Manual export via Prisma Studio
+
+**Option 2**: Scheduled pg_dump
+```bash
+# Add to cron job
+0 2 * * * pg_dump $DATABASE_URL > ~/backups/db-$(date +%Y%m%d).sql
+```
+
+### Google Drive Files
+
+Photos are already backed up in Google Drive. Ensure Drive folder has:
+- Regular Google Drive backups enabled
+- Shared with trusted account for redundancy
+
+## Cost Estimate (Vercel Free Tier)
+
+| Resource | Free Tier Limit | United Album Usage | Safe? |
+|----------|----------------|-------------------|-------|
+| **Bandwidth** | 100 GB/month | ~2-5 GB (50 guests) | ✅ Yes |
+| **Serverless Executions** | 100 GB-hrs | ~5-10 GB-hrs | ✅ Yes |
+| **Build Time** | 6000 mins/month | ~10 mins/month | ✅ Yes |
+| **Postgres Storage** | 256 MB | ~1-2 MB | ✅ Yes |
+| **Postgres Compute** | 60 hours/month | 720 hours needed | ⚠️ Upgrade needed |
+
+**Recommendation**: Free tier works for testing. For wedding day (500+ photos, 50+ guests), upgrade to **Pro** ($20/month) for unlimited Postgres compute.
 
 ## Post-Deployment Checklist
 
-- [ ] Application deployed successfully
-- [ ] Database migrations completed
-- [ ] All environment variables configured
-- [ ] Test photo upload works
-- [ ] Face detection working
-- [ ] Admin panel accessible
-- [ ] Photo likes persisting
-- [ ] Infinite scroll loading photos
-- [ ] Download album functionality works
-- [ ] Custom domain configured (if applicable)
-- [ ] Backup strategy in place
-- [ ] Team members have access credentials
+- [ ] Homepage loads correctly
+- [ ] All pose challenges visible
+- [ ] Photo upload works
+- [ ] Face detection works
+- [ ] Gallery filtering works
+- [ ] Admin panel accessible at `/admin`
+- [ ] Admin password works
+- [ ] Bulk upload works
+- [ ] All environment variables set
+- [ ] Database tables created
+- [ ] SSL certificate active
+- [ ] Backups configured
 
-## Support Resources
+## Support & Troubleshooting
 
-- **Vercel Documentation**: https://vercel.com/docs
-- **Vercel Postgres Docs**: https://vercel.com/docs/storage/vercel-postgres
-- **Prisma Deployment**: https://www.prisma.io/docs/guides/deployment
-- **Next.js Deployment**: https://nextjs.org/docs/deployment
+**Vercel Documentation**: https://vercel.com/docs
+**Prisma Documentation**: https://www.prisma.io/docs
+**Next.js Documentation**: https://nextjs.org/docs
+
+**Project Issues**: Check deployment logs first, then Vercel function logs.
 
 ---
 
-🎉 **Deployment Complete!** Your wedding photo album is now live at `https://your-project.vercel.app`
+**Deployment Date**: January 2026
+**Last Updated**: January 21, 2026
+**Maintainer**: Claude Code

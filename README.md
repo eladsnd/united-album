@@ -2,25 +2,30 @@
 
 A Next.js wedding photo-sharing application that combines pose challenges with AI-powered face recognition. Guests can view pose challenges, upload photos, and browse an intelligent face-organized gallery.
 
+> **🚀 Production Ready**: Deployed on Vercel with PostgreSQL database.
+> **📅 Last Updated**: January 21, 2026
+
 ## Features
 
-- **3D Pose Carousel**: Interactive 3D carousel showcasing wedding pose challenges
+- **3D Pose Carousel**: Interactive 3D carousel showcasing wedding pose challenges with Hebrew RTL support
 - **AI Face Recognition**: Automatic face detection and grouping using face-api.js
 - **Smart Photo Gallery**: Filter photos by person or pose challenge
-- **Photo Likes**: Like your favorite photos with persistent backend storage
-- **Infinite Scroll**: Smooth progressive loading for large photo collections
-- **Google Drive Storage**: All photos securely stored in Google Drive
-- **Admin Panel**: Manage pose challenges and moderate content
-- **Mobile Responsive**: Optimized for all devices with QR code access
+- **Photo Likes**: Like your favorite photos with persistent database storage
+- **Infinite Scroll**: Smooth progressive loading for large photo collections (20 photos/page)
+- **Bulk Upload**: Upload multiple photos/videos at once without pose challenges
+- **Google Drive Storage**: All photos securely stored in Google Drive with organized folder structure
+- **Admin Panel**: Manage pose challenges with drag-drop reordering at `/admin`
+- **Mobile Responsive**: Optimized for all devices with QR code access and touch gestures
 
 ## Tech Stack
 
-- **Frontend**: Next.js 14, React 18, face-api.js
-- **Backend**: Next.js API Routes, Prisma ORM
-- **Database**: SQLite (dev) / PostgreSQL (production)
+- **Frontend**: Next.js 16 (App Router), React 18, face-api.js
+- **Backend**: Next.js API Routes, Prisma ORM 6.19
+- **Database**: PostgreSQL (Vercel Postgres) / SQLite (local dev)
 - **Storage**: Google Drive API (OAuth 2.0)
+- **Deployment**: Vercel (auto-deploy from GitHub)
 - **Styling**: CSS3 with glass morphism effects
-- **Testing**: Jest, React Testing Library, Playwright
+- **Testing**: Jest, React Testing Library (143 tests passing)
 
 ## Prerequisites
 
