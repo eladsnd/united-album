@@ -18,9 +18,25 @@ npm run lint             # Run Next.js linter
 # Testing
 npm test                 # Run Jest test suite
 npm run test:watch       # Run Jest in watch mode
+npm run test:coverage    # Generate test coverage report
+npm run test:api         # Run API tests only (__tests__/api)
+npm run test:e2e         # Run Playwright end-to-end tests
+npm run test:e2e:ui      # Run Playwright tests with UI
+npm run test:all         # Run all tests (Jest + Playwright)
+
+# Run specific test file
+npm test -- PhotoRepository.test.js
+npm test -- lib/services/PhotoService.test.js
+
+# Database
+npx prisma generate      # Regenerate Prisma client after schema changes
+npx prisma db push       # Push schema changes to database (development)
+npx prisma migrate dev   # Create and apply migration (development)
+npx prisma studio        # Open Prisma Studio database GUI (localhost:5555)
 
 # Utilities
-node scripts/cleanupData.js  # Clean and merge face data from photos.json and faces.json
+node scripts/seedProduction.js  # Seed database with initial pose challenges
+node scripts/resetTestData.js   # Reset test data
 ```
 
 ## Architecture
@@ -98,6 +114,7 @@ node scripts/cleanupData.js  # Clean and merge face data from photos.json and fa
 
 - **`lib/photoStorage.js`**: ⚠️ DEPRECATED - Use PhotoRepository instead
 - **`lib/faceStorage.js`**: ⚠️ DEPRECATED - Use FaceRepository instead
+- **`data/photos.json`** and **`data/faces.json`**: ⚠️ LEGACY - JSON file storage replaced by Prisma database. These files may exist for backward compatibility but all new code uses the database via repositories.
 
 ### UI Structure
 
@@ -108,21 +125,41 @@ node scripts/cleanupData.js  # Clean and merge face data from photos.json and fa
 ## Environment Setup
 
 Required environment variables (see `.env.example`):
-```
+```bash
+# Required
 GOOGLE_CLIENT_ID=         # From Google Cloud Console
 GOOGLE_CLIENT_SECRET=     # From Google Cloud Console
 GOOGLE_REFRESH_TOKEN=     # OAuth refresh token
 GOOGLE_DRIVE_FOLDER_ID=   # Default upload folder
+ADMIN_PASSWORD=           # Admin panel password
+
+# Optional - Database (defaults to SQLite in development)
+DATABASE_URL=             # PostgreSQL connection string for production (Vercel Postgres)
+
+# Optional - Face Detection
+FACE_MATCH_THRESHOLD=0.50 # Face matching sensitivity (0.45-0.55 range)
+FACE_MAX_SAMPLES=5        # Max face descriptors to store per person
 ```
 
-**Important**: Upload API returns 403 if OAuth credentials are missing.
+**Important Notes**:
+- Upload API returns 401 if OAuth credentials are missing
+- Copy `.env.example` to `.env.local` and fill in your values
+- `.env.local` is gitignored and will not be committed
 
 ## Testing Conventions
 
 - Tests located in `__tests__/` directory
-- Uses Jest with jsdom environment
+- Uses Jest with jsdom environment for unit tests
+- Uses Playwright for end-to-end tests (`__tests__/e2e/`)
 - Testing Library for React components
-- Run single test: `npm test -- <test-file-name>`
+- Uses `jest-mock-extended` for Prisma mocking in repository/service tests
+- Test structure:
+  - `__tests__/repositories/` - Repository layer tests (BaseRepository, PhotoRepository, FaceRepository, ChallengeRepository)
+  - `__tests__/lib/services/` - Service layer tests (PhotoService, FaceService, UploadService, ChallengeService)
+  - `__tests__/api/` - API endpoint integration tests
+  - `__tests__/e2e/` - End-to-end Playwright tests
+- Run specific test: `npm test -- <test-file-name>` (e.g., `npm test -- PhotoRepository.test.js`)
+- All Google Drive operations should be mocked in tests to avoid external API calls
 
 ## Face Detection Models
 
@@ -131,6 +168,52 @@ Client-side face detection requires model files in `public/models/`:
 - `ssd_mobilenetv1_model-*` (fallback, better for small faces)
 - `face_landmark_68_model-*` (landmarks)
 - `face_recognition_model-*` (128D descriptors)
+
+## Common Development Workflows
+
+### Adding a New API Endpoint
+
+1. Create handler function with business logic only
+2. Use `withApi` decorator for cross-cutting concerns:
+   ```javascript
+   import { withApi } from '@/lib/api/decorators';
+
+   async function handleRequest(request) {
+     // Your business logic here
+     return NextResponse.json({ data: 'response' });
+   }
+
+   // Apply decorators
+   export const POST = withApi(handleRequest, {
+     rateLimit: 'api',    // or 'upload', 'admin'
+     adminOnly: false     // set true for admin-only endpoints
+   });
+   ```
+3. Throw custom errors from `lib/api/errors.js` instead of returning error responses
+4. Use repositories for database access, services for business logic
+
+### Adding a New Database Model
+
+1. Update `prisma/schema.prisma` with new model
+2. Run `npx prisma generate` to update Prisma client
+3. Run `npx prisma db push` (dev) or `npx prisma migrate dev` (production)
+4. Create repository extending `BaseRepository`:
+   ```javascript
+   export class MyRepository extends BaseRepository {
+     getModel() { return 'myModel'; }
+     serialize(data) { /* JSON.stringify arrays */ }
+     deserialize(record) { /* JSON.parse arrays */ }
+   }
+   ```
+5. Create service class for business logic using the repository
+6. Write tests for both repository and service layers
+
+### Modifying Face Detection Logic
+
+- Client-side detection: Edit `utils/clientFaceDetection.js`
+- Face matching threshold: Adjust `FACE_MATCH_THRESHOLD` in `.env.local`
+- Face descriptor storage: Modify `lib/repositories/FaceRepository.js`
+- Face matching algorithm: Update `lib/services/FaceService.js`
 
 ## Important Implementation Notes
 
@@ -171,9 +254,39 @@ Client-side face detection requires model files in `public/models/`:
    - Multi-model detection strategy: TinyFaceDetector (fast) + SSD MobileNet (accurate)
    - Face matching threshold: 0.45-0.55 Euclidean distance (adaptive based on sample count)
 
-7. **Testing**:
-   - 143 tests total (100% pass rate)
-   - Repository tests: 79 tests (PhotoRepository, FaceRepository, ChallengeRepository)
-   - Service tests: 64 tests (PhotoService, FaceService, UploadService, ChallengeService)
+7. **Database Schema (Prisma)**:
+   - **Photo model**: Stores photo metadata with JSON fields (faceIds, faceBoxes) for SQLite/PostgreSQL compatibility
+   - **Face model**: Stores face descriptors and metadata with rolling window of samples
+   - **Challenge model**: Stores pose challenge definitions with order field for sorting
+   - **PhotoLike model**: Stores photo likes with cascade delete on photo deletion
+   - After schema changes: Run `npx prisma generate` then `npx prisma db push` (dev) or `npx prisma migrate dev` (production-ready)
+   - Use `npx prisma studio` to inspect database visually
+
+8. **Testing**:
+   - Repository tests: PhotoRepository, FaceRepository, ChallengeRepository, BaseRepository
+   - Service tests: PhotoService, FaceService, UploadService, ChallengeService
+   - API tests: All API endpoints have integration tests
+   - E2E tests: Playwright tests for critical user flows
    - Use `jest-mock-extended` for Prisma mocking
-   - Mock Google Drive operations in all tests
+   - Mock Google Drive operations in all tests to avoid external API calls
+
+## Deployment Notes
+
+**Production Environment (Vercel)**:
+- Database: PostgreSQL (Vercel Postgres) - automatically provisioned
+- Schema deployment: Uses `prisma db push` instead of migrations (see `package.json` build script)
+- Environment variables: Set all `.env.local` variables in Vercel dashboard
+- Google Drive folder structure persists across deployments (not ephemeral)
+- Face detection models must be in `public/models/` (committed to git)
+
+**First-Time Production Setup**:
+1. Deploy to Vercel from GitHub
+2. Add Vercel Postgres addon
+3. Set environment variables (Google OAuth, Drive folder ID, admin password)
+4. Run `node scripts/seedProduction.js` to populate initial pose challenges
+5. Verify Google Drive OAuth token hasn't expired (regenerate if needed)
+
+**Build Process**:
+- Build command runs: `prisma generate` → `prisma db push` → `next build`
+- Uses `DATABASE_URL` env var or defaults to `file:./dev.db` (SQLite) for local dev
+- `--accept-data-loss` flag used in `prisma db push` (safe for schema-first deployments)
