@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import AdminAuth from '../../components/AdminAuth';
 import AdminPoseManager from '../../components/AdminPoseManager';
 import AdminEventManager from '../../components/AdminEventManager';
+import GamifyToggle from '../../components/GamifyToggle';
 import { Image as ImageIcon, Calendar, LogOut } from 'lucide-react';
 
 export default function AdminPage() {
@@ -45,7 +46,10 @@ export default function AdminPage() {
             {/* Header with Logout */}
             <div className="bg-white border-b border-gray-200">
                 <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+                    <div className="flex items-center gap-4">
+                        <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
+                        <GamifyToggle adminToken={adminToken} />
+                    </div>
                     <button
                         onClick={handleLogout}
                         className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition"
