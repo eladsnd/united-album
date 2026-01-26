@@ -62,18 +62,23 @@ model Face {
 }
 
 model Challenge {
-  id          String   @id
+  id          String    @id
   title       String
   instruction String
   image       String
   folderId    String?
-  order       Int      @default(0)
-  points      Int      @default(10)  // Points awarded for completing this challenge
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  order       Int       @default(0)
+  points      Int       @default(10)     // Points awarded for completing this challenge
+  startTime   DateTime? // Challenge becomes active at this time (null = always active)
+  endTime     DateTime? // Challenge expires at this time (null = never expires)
+  bonusPoints Int       @default(0)      // Extra points during active window
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   @@index([title])
   @@index([order])
+  @@index([startTime])
+  @@index([endTime])
 }
 
 model PhotoLike {
