@@ -13,6 +13,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
         title: '',
         instruction: '',
         folderId: '',
+        points: 10,
     });
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -69,7 +70,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
 
     const openAddForm = () => {
         setEditingPose(null);
-        setFormData({ title: '', instruction: '', folderId: '' });
+        setFormData({ title: '', instruction: '', folderId: '', points: 10 });
         setImageFile(null);
         setImagePreview(null);
         setFormError('');
@@ -82,6 +83,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
             title: pose.title,
             instruction: pose.instruction,
             folderId: pose.folderId || '',
+            points: pose.points || 10,
         });
         setImagePreview(pose.image);
         setImageFile(null);
@@ -92,7 +94,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
     const closeForm = () => {
         setShowForm(false);
         setEditingPose(null);
-        setFormData({ title: '', instruction: '', folderId: '' });
+        setFormData({ title: '', instruction: '', folderId: '', points: 10 });
         setImageFile(null);
         setImagePreview(null);
         setFormError('');
@@ -112,6 +114,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
 
             formDataToSend.append('title', formData.title);
             formDataToSend.append('instruction', formData.instruction);
+            formDataToSend.append('points', formData.points || 10);
             if (formData.folderId) {
                 formDataToSend.append('folderId', formData.folderId);
             }
@@ -306,9 +309,21 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                                 </div>
                             </div>
                             <div className="pose-card-content">
-                                <h3 style={{ fontWeight: '500', marginBottom: '0.5rem' }}>
-                                    {pose.title}
-                                </h3>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                                    <h3 style={{ fontWeight: '500', margin: 0 }}>
+                                        {pose.title}
+                                    </h3>
+                                    <span style={{
+                                        fontSize: '0.75rem',
+                                        fontWeight: '600',
+                                        padding: '0.125rem 0.5rem',
+                                        borderRadius: '0.25rem',
+                                        backgroundColor: '#fef3c7',
+                                        color: '#92400e',
+                                    }}>
+                                        🏆 {pose.points || 10} pts
+                                    </span>
+                                </div>
                                 <p className="pose-instruction-preview">
                                     {pose.instruction}
                                 </p>
@@ -373,6 +388,24 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                                             rows={4}
                                             required
                                         />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Points (0-100)</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            value={formData.points}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, points: parseInt(e.target.value) || 0 })
+                                            }
+                                            min="0"
+                                            max="100"
+                                            placeholder="10"
+                                        />
+                                        <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '0.5rem' }}>
+                                            Points awarded when guests complete this challenge
+                                        </p>
                                     </div>
 
                                     <div className="form-group">
