@@ -68,6 +68,7 @@ model Challenge {
   image       String
   folderId    String?
   order       Int      @default(0)
+  points      Int      @default(10)  // Points awarded for completing this challenge
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -101,4 +102,25 @@ model Event {
 
   @@index([startTime])
   @@index([order])
+}
+
+model AppSettings {
+  id         String   @id @default("app_settings")  // Singleton pattern
+  gamifyMode Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model UserScore {
+  id                  Int       @id @default(autoincrement())
+  userId              String    @unique  // From getUserId()
+  totalPoints         Int       @default(0)
+  completedChallenges String    @default("[]")  // JSON array of challenge IDs
+  nickname            String?   // Optional custom name
+  lastEarned          DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  @@index([totalPoints])
+  @@index([userId])
 }
