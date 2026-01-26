@@ -28,6 +28,7 @@
     "prisma": "^6.19.2",
     "qrcode": "latest",
     "react": "latest",
+    "react-confetti": "^6.4.0",
     "react-dom": "latest",
     "sharp": "^0.34.5"
   },
