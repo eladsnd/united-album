@@ -226,6 +226,12 @@ export default function UploadSection({ folderId, poseTitle }) {
                 toast.showSuccess('Photo uploaded successfully! 🎉');
             }
 
+            // Check if points were awarded
+            if (uploadData.pointsAwarded) {
+                const { pointsEarned, challengeTitle, totalPoints } = uploadData.pointsAwarded;
+                toast.showSuccess(`🎉 +${pointsEarned} points! You completed "${challengeTitle}" (Total: ${totalPoints})`);
+            }
+
             setUploadProgress(100);
 
             setStatus('success');
