@@ -14,6 +14,9 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
         instruction: '',
         folderId: '',
         points: 10,
+        startTime: '',
+        endTime: '',
+        bonusPoints: 0,
     });
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState(null);
@@ -70,7 +73,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
 
     const openAddForm = () => {
         setEditingPose(null);
-        setFormData({ title: '', instruction: '', folderId: '', points: 10 });
+        setFormData({ title: '', instruction: '', folderId: '', points: 10, startTime: '', endTime: '', bonusPoints: 0 });
         setImageFile(null);
         setImagePreview(null);
         setFormError('');
@@ -79,11 +82,24 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
 
     const openEditForm = (pose) => {
         setEditingPose(pose);
+
+        // Format datetime for input (datetime-local requires format: YYYY-MM-DDTHH:MM)
+        const formatDateTime = (dateStr) => {
+            if (!dateStr) return '';
+            const date = new Date(dateStr);
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            return localDate.toISOString().slice(0, 16);
+        };
+
         setFormData({
             title: pose.title,
             instruction: pose.instruction,
             folderId: pose.folderId || '',
             points: pose.points || 10,
+            startTime: formatDateTime(pose.startTime),
+            endTime: formatDateTime(pose.endTime),
+            bonusPoints: pose.bonusPoints || 0,
         });
         setImagePreview(pose.image);
         setImageFile(null);
@@ -94,7 +110,7 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
     const closeForm = () => {
         setShowForm(false);
         setEditingPose(null);
-        setFormData({ title: '', instruction: '', folderId: '', points: 10 });
+        setFormData({ title: '', instruction: '', folderId: '', points: 10, startTime: '', endTime: '', bonusPoints: 0 });
         setImageFile(null);
         setImagePreview(null);
         setFormError('');
@@ -117,6 +133,15 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
             formDataToSend.append('points', formData.points || 10);
             if (formData.folderId) {
                 formDataToSend.append('folderId', formData.folderId);
+            }
+            if (formData.startTime) {
+                formDataToSend.append('startTime', new Date(formData.startTime).toISOString());
+            }
+            if (formData.endTime) {
+                formDataToSend.append('endTime', new Date(formData.endTime).toISOString());
+            }
+            if (formData.bonusPoints) {
+                formDataToSend.append('bonusPoints', formData.bonusPoints || 0);
             }
 
             if (imageFile) {
@@ -405,6 +430,55 @@ export default function AdminPoseManager({ adminToken, onLogout }) {
                                         />
                                         <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '0.5rem' }}>
                                             Points awarded when guests complete this challenge
+                                        </p>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">⏰ Time Window (Optional)</label>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                                            <div>
+                                                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>Start Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="form-input"
+                                                    value={formData.startTime}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, startTime: e.target.value })
+                                                    }
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>End Time</label>
+                                                <input
+                                                    type="datetime-local"
+                                                    className="form-input"
+                                                    value={formData.endTime}
+                                                    onChange={(e) =>
+                                                        setFormData({ ...formData, endTime: e.target.value })
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '0.5rem' }}>
+                                            Challenge only active during this time window. Leave empty for always active.
+                                        </p>
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">🎁 Bonus Points (0-50)</label>
+                                        <input
+                                            type="number"
+                                            className="form-input"
+                                            value={formData.bonusPoints}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, bonusPoints: parseInt(e.target.value) || 0 })
+                                            }
+                                            min="0"
+                                            max="50"
+                                            placeholder="0"
+                                        />
+                                        <p style={{ fontSize: '0.75rem', opacity: 0.5, marginTop: '0.5rem' }}>
+                                            Extra points awarded during the time window
                                         </p>
                                     </div>
 
