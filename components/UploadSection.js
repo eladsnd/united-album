@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Upload, CheckCircle, Loader2 } from 'lucide-react';
 import { detectFaceInBrowser, loadFaceModels } from '../utils/clientFaceDetection';
 import { useToast } from './ToastContainer';
+import PointsCelebration from './PointsCelebration';
 
 export default function UploadSection({ folderId, poseTitle }) {
     const [status, setStatus] = useState('idle'); // idle, analyzing, uploading, success, error
@@ -12,6 +13,8 @@ export default function UploadSection({ folderId, poseTitle }) {
     const [uploadProgress, setUploadProgress] = useState(0);
     const [retryCount, setRetryCount] = useState(0);
     const [isUploading, setIsUploading] = useState(false); // Prevent duplicate uploads
+    const [showCelebration, setShowCelebration] = useState(false);
+    const [celebrationData, setCelebrationData] = useState(null);
     const toast = useToast();
 
     // Get or create uploader session ID
@@ -226,10 +229,10 @@ export default function UploadSection({ folderId, poseTitle }) {
                 toast.showSuccess('Photo uploaded successfully! 🎉');
             }
 
-            // Check if points were awarded
+            // Check if points were awarded - show celebration
             if (uploadData.pointsAwarded) {
-                const { pointsEarned, challengeTitle, totalPoints } = uploadData.pointsAwarded;
-                toast.showSuccess(`🎉 +${pointsEarned} points! You completed "${challengeTitle}" (Total: ${totalPoints})`);
+                setCelebrationData(uploadData.pointsAwarded);
+                setShowCelebration(true);
             }
 
             setUploadProgress(100);
@@ -415,6 +418,23 @@ export default function UploadSection({ folderId, poseTitle }) {
                     box-shadow: 0 4px 15px rgba(var(--primary-rgb), 0.3);
                 }
             `}</style>
+
+            {/* Points Celebration Modal */}
+            {celebrationData && (
+                <PointsCelebration
+                    show={showCelebration}
+                    pointsEarned={celebrationData.pointsEarned}
+                    bonusPoints={celebrationData.bonusPoints || 0}
+                    challengeTitle={celebrationData.challengeTitle}
+                    totalPoints={celebrationData.totalPoints}
+                    isTimedChallenge={celebrationData.isTimedChallenge}
+                    onComplete={() => {
+                        setShowCelebration(false);
+                        // Trigger leaderboard refresh
+                        window.dispatchEvent(new Event('pointsAwarded'));
+                    }}
+                />
+            )}
         </div>
     );
 }
