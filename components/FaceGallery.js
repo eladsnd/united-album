@@ -22,8 +22,10 @@ export default function AlbumGallery() {
     const [photos, setPhotos] = useState([]);
     const [faceThumbnails, setFaceThumbnails] = useState([]);
     const [challenges, setChallenges] = useState([]); // Pose challenges from database
+    const [events, setEvents] = useState([]); // Events from database
     const [faceFilter, setFaceFilter] = useState('all');
     const [poseFilter, setPoseFilter] = useState('all');
+    const [eventFilter, setEventFilter] = useState('all');
     const [likeFilter, setLikeFilter] = useState('all'); // 'all' or 'liked'
     const [loading, setLoading] = useState(true);
     const [faceScrollIndex, setFaceScrollIndex] = useState(0);
@@ -227,6 +229,16 @@ export default function AlbumGallery() {
             })
             .catch(err => console.error('Failed to fetch challenges:', err));
 
+        // Fetch events from database
+        fetch('/api/events')
+            .then(res => res.json())
+            .then(data => {
+                if (data.success && data.data) {
+                    setEvents(data.data);
+                }
+            })
+            .catch(err => console.error('Failed to fetch events:', err));
+
         window.addEventListener('photoUploaded', fetchPhotos);
         return () => window.removeEventListener('photoUploaded', fetchPhotos);
     }, []);
@@ -406,10 +418,11 @@ export default function AlbumGallery() {
             const faceIds = p.faceIds || [p.mainFaceId || p.faceId || 'unknown'];
             const faceMatch = faceFilter === 'all' || faceIds.includes(faceFilter);
             const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
+            const eventMatch = eventFilter === 'all' || p.eventId === eventFilter;
             const likeMatch = likeFilter === 'all' || likedPhotos.has(p.id);
-            return faceMatch && poseMatch && likeMatch;
+            return faceMatch && poseMatch && eventMatch && likeMatch;
         });
-    }, [photos, faceFilter, poseFilter, likeFilter, likedPhotos]);
+    }, [photos, faceFilter, poseFilter, eventFilter, likeFilter, likedPhotos]);
 
     return (
         <div className="face-gallery card" style={{ marginTop: '2rem' }}>
@@ -449,6 +462,34 @@ export default function AlbumGallery() {
                         })}
                     </div>
                 </div>
+
+                {events.length > 0 && (
+                    <div className="filter-group">
+                        <span className="filter-label">Filter by Event</span>
+                        <div className="filter-chips">
+                            <button className={`chip ${eventFilter === 'all' ? 'active' : ''}`} onClick={() => setEventFilter('all')}>All Events</button>
+                            {events.map(event => {
+                                const eventDate = new Date(event.startTime).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric'
+                                });
+                                return (
+                                    <button
+                                        key={event.id}
+                                        className={`chip ${eventFilter === event.id ? 'active' : ''}`}
+                                        onClick={() => setEventFilter(event.id)}
+                                        style={{
+                                            borderLeft: `3px solid ${event.color}`,
+                                            paddingLeft: '10px'
+                                        }}
+                                    >
+                                        {event.name} ({event.photoCount || 0})
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
 
                 <div className="filter-group">
                     <span className="filter-label">Filter by Face</span>
