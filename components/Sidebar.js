@@ -1,6 +1,7 @@
 "use client";
 import Link from 'next/link';
 import { Camera, Image, Smartphone, Upload, Settings } from 'lucide-react';
+import Leaderboard from './Leaderboard';
 
 export default function Sidebar({ activeSection, setActiveSection }) {
     const menuItems = [
@@ -29,6 +30,10 @@ export default function Sidebar({ activeSection, setActiveSection }) {
                     </button>
                 ))}
             </nav>
+
+            <div style={{ padding: '1rem', flex: 1, overflow: 'auto' }}>
+                <Leaderboard />
+            </div>
 
             <div className="sidebar-footer">
                 <Link href="/admin" className="admin-link">
