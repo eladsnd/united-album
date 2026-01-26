@@ -9,7 +9,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -25,9 +25,14 @@ model Photo {
   uploaderId  String?
   likeCount   Int       @default(0)
   timestamp   DateTime  @default(now())
+  capturedAt  DateTime?              // EXIF original capture time
+  deviceMake  String?                // Camera/phone manufacturer
+  deviceModel String?                // Camera/phone model
+  eventId     String?                // Foreign key to Event
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   likes       PhotoLike[]
+  event       Event?    @relation(fields: [eventId], references: [id])
 
   @@index([driveId])
   @@index([mainFaceId])
@@ -35,6 +40,9 @@ model Photo {
   @@index([uploaderId])
   @@index([timestamp])
   @@index([likeCount])
+  @@index([capturedAt])
+  @@index([eventId])
+  @@index([deviceModel])
 }
 
 model Face {
@@ -77,4 +85,20 @@ model PhotoLike {
   @@unique([photoId, userId])
   @@index([photoId])
   @@index([userId])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  color       String   @default("#3B82F6")  // Hex color for UI
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  photos      Photo[]
+
+  @@index([startTime])
+  @@index([order])
 }
