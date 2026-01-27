@@ -1,6 +1,7 @@
 "use client";
 import { useState, useRef } from 'react';
 import { Upload, X, CheckCircle, AlertCircle, Image as ImageIcon, Video } from 'lucide-react';
+import { useFeatureFlag } from '../lib/hooks/useFeatureFlag';
 
 const CHUNK_SIZE = 5; // Upload 5 files at a time
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB max per file
@@ -11,6 +12,35 @@ export default function BulkUpload() {
     const [uploadProgress, setUploadProgress] = useState({});
     const [uploadResults, setUploadResults] = useState([]);
     const fileInputRef = useRef(null);
+
+    // Check if bulk upload feature is enabled
+    const { enabled: bulkUploadEnabled, loading } = useFeatureFlag('bulkUpload');
+
+    // Show loading state while checking feature flag
+    if (loading) {
+        return (
+            <div className="text-center py-8 text-gray-500">
+                Loading...
+            </div>
+        );
+    }
+
+    // Show disabled message if feature is off
+    if (!bulkUploadEnabled) {
+        return (
+            <div className="text-center py-8">
+                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 max-w-md mx-auto">
+                    <AlertCircle className="w-12 h-12 text-yellow-600 mx-auto mb-3" />
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        Bulk Upload Disabled
+                    </h3>
+                    <p className="text-gray-600">
+                        The bulk upload feature is currently disabled. Please contact an administrator to enable it.
+                    </p>
+                </div>
+            </div>
+        );
+    }
 
     const handleFileSelect = (e) => {
         const files = Array.from(e.target.files || []);
