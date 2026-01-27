@@ -2,14 +2,31 @@
 import Link from 'next/link';
 import { Camera, Image, Smartphone, Upload, Settings } from 'lucide-react';
 import Leaderboard from './Leaderboard';
+import { useFeatureFlags } from '@/lib/hooks/useFeatureFlag';
 
 export default function Sidebar({ activeSection, setActiveSection }) {
-    const menuItems = [
-        { id: 'challenge', label: 'Pose Challenge', icon: Camera },
-        { id: 'gallery', label: 'Album Gallery', icon: Image },
-        { id: 'bulk-upload', label: 'Regular Photos', icon: Upload },
-        { id: 'access', label: 'App Access', icon: Smartphone }
+    const { flags, loading } = useFeatureFlags();
+
+    // All possible menu items with their feature flag requirements
+    const allMenuItems = [
+        { id: 'challenge', label: 'Pose Challenge', icon: Camera, requiresFeature: 'challenges' },
+        { id: 'gallery', label: 'Album Gallery', icon: Image, alwaysShow: true },
+        { id: 'bulk-upload', label: 'Regular Photos', icon: Upload, requiresFeature: 'bulkUpload' },
+        { id: 'access', label: 'App Access', icon: Smartphone, alwaysShow: true }
     ];
+
+    // Filter menu items based on feature flags
+    const menuItems = allMenuItems.filter(item => {
+        // Always show items that don't require a feature flag
+        if (item.alwaysShow) return true;
+
+        // Only show if the required feature is enabled
+        if (item.requiresFeature) {
+            return flags?.[item.requiresFeature] === true;
+        }
+
+        return true;
+    });
 
     return (
         <aside className="sidebar">
@@ -19,7 +36,7 @@ export default function Sidebar({ activeSection, setActiveSection }) {
             </div>
 
             <nav className="sidebar-nav">
-                {menuItems.map((item) => (
+                {menuItems?.map((item) => (
                     <button
                         key={item.id}
                         className={`nav-item ${activeSection === item.id ? 'active' : ''}`}

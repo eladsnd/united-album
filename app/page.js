@@ -9,10 +9,14 @@ import Sidebar from '../components/Sidebar';
 import ImageModal from '../components/ImageModal';
 import BulkUpload from '../components/BulkUpload';
 import BackgroundFaceProcessor from '../components/BackgroundFaceProcessor';
+import { useFeatureFlags } from '@/lib/hooks/useFeatureFlag';
 
 export default function Home() {
-    // Always start with 'challenge' on server to avoid hydration mismatch
-    const [activeSection, setActiveSection] = useState('challenge');
+    const { flags } = useFeatureFlags();
+
+    // Default to gallery if challenges are disabled, otherwise challenge
+    const defaultSection = flags?.challenges ? 'challenge' : 'gallery';
+    const [activeSection, setActiveSection] = useState(defaultSection);
     const [currentIndex, setCurrentIndex] = useState(-1);
     const [challengesData, setChallengesData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -22,18 +26,29 @@ export default function Home() {
     useEffect(() => {
         const savedSection = localStorage.getItem('activeSection');
         if (savedSection) {
-            setActiveSection(savedSection);
+            // Only use saved section if it's allowed by feature flags
+            if (savedSection === 'challenge' && !flags?.challenges) {
+                setActiveSection('gallery');
+            } else {
+                setActiveSection(savedSection);
+            }
         }
-    }, []);
+    }, [flags]);
 
     // Save active section to localStorage when it changes
     useEffect(() => {
         localStorage.setItem('activeSection', activeSection);
     }, [activeSection]);
 
-    // Fetch challenges from database API
+    // Fetch challenges from database API (only if challenges feature is enabled)
     useEffect(() => {
         async function fetchChallenges() {
+            // Skip fetching if challenges are disabled
+            if (!flags?.challenges) {
+                setLoading(false);
+                return;
+            }
+
             try {
                 const response = await fetch('/api/admin/poses');
                 const data = await response.json();
@@ -52,7 +67,7 @@ export default function Home() {
             }
         }
         fetchChallenges();
-    }, []);
+    }, [flags]);
 
     const nextChallenge = () => {
         setCurrentIndex((prev) => (prev + 1) % challengesData.length);
