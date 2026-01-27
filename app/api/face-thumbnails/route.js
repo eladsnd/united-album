@@ -17,11 +17,17 @@ export async function GET() {
 
             // PRIORITY 1: Use stored face thumbnail (high-quality crop from original image)
             if (face.thumbnailDriveId) {
-                // Check if it's a full URL (Cloudinary) or just an ID (Google Drive)
+                // Check URL format to determine provider
                 if (face.thumbnailDriveId.startsWith('http')) {
-                    faceUrl = face.thumbnailDriveId; // Cloudinary: Direct URL
+                    // Already a full URL (new format)
+                    faceUrl = face.thumbnailDriveId;
+                } else if (face.thumbnailDriveId.includes('/')) {
+                    // Cloudinary public_id (old format) - construct full URL
+                    const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dibluthbm';
+                    faceUrl = `https://res.cloudinary.com/${cloudName}/image/upload/${face.thumbnailDriveId}`;
                 } else {
-                    faceUrl = `/api/image/${face.thumbnailDriveId}`; // Google Drive: Proxy URL
+                    // Google Drive file ID - use proxy
+                    faceUrl = `/api/image/${face.thumbnailDriveId}`;
                 }
                 console.log(`[Face Thumbnails] Using stored thumbnail for ${face.faceId}: ${faceUrl}`);
             } else {
