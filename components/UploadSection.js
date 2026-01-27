@@ -149,17 +149,19 @@ export default function UploadSection({ folderId, poseTitle }) {
             setUploadProgress(40);
             const uploadData = await uploadWithRetry(formData);
             const photoId = uploadData.photo.driveId;
+            const photoUrl = uploadData.photo.url; // Use direct URL (works for both Cloudinary and Drive)
 
             setUploadProgress(50);
 
             // Step 2: If face detection is enabled, detect faces from the uploaded image
-            if (modelsReady && photoId) {
+            if (modelsReady && photoUrl) {
                 try {
                     setStatus('analyzing');
 
-                    // Download the image from Drive to detect faces
-                    const imageUrl = `/api/image/${photoId}`;
-                    const imageResponse = await fetch(imageUrl);
+                    // Download the image to detect faces (provider-agnostic)
+                    // - Cloudinary: Direct URL (https://res.cloudinary.com/...)
+                    // - Google Drive: Proxy URL (/api/image/abc123)
+                    const imageResponse = await fetch(photoUrl);
 
                     if (!imageResponse.ok) {
                         throw new Error(`Failed to fetch image: ${imageResponse.status}`);
