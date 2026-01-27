@@ -9,6 +9,8 @@ import Sidebar from '../components/Sidebar';
 import ImageModal from '../components/ImageModal';
 import BulkUpload from '../components/BulkUpload';
 import BackgroundFaceProcessor from '../components/BackgroundFaceProcessor';
+import ActiveChallengeNotification from '../components/ActiveChallengeNotification';
+import TimedChallengeModal from '../components/TimedChallengeModal';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlag';
 
 export default function Home() {
@@ -19,6 +21,9 @@ export default function Home() {
     const [activeSection, setActiveSection] = useState(defaultSection);
     const [currentIndex, setCurrentIndex] = useState(-1);
     const [challengesData, setChallengesData] = useState([]);
+    const [regularChallenges, setRegularChallenges] = useState([]);
+    const [activeTimedChallenge, setActiveTimedChallenge] = useState(null);
+    const [showTimedChallengeModal, setShowTimedChallengeModal] = useState(false);
     const [loading, setLoading] = useState(true);
     const [modalImage, setModalImage] = useState(null);
 
@@ -53,10 +58,40 @@ export default function Home() {
                 const response = await fetch('/api/admin/poses');
                 const data = await response.json();
                 if (data.success && data.data) {
+                    const now = new Date();
+
+                    // Separate timed challenges from regular challenges
+                    const timed = [];
+                    const regular = [];
+
+                    data.data.forEach(challenge => {
+                        // A challenge is "timed" if it has both startTime and endTime set
+                        const hasTimeWindow = challenge.startTime && challenge.endTime;
+
+                        if (hasTimeWindow) {
+                            const start = new Date(challenge.startTime);
+                            const end = new Date(challenge.endTime);
+
+                            // Check if challenge is currently active
+                            if (now >= start && now <= end) {
+                                timed.push(challenge);
+                            }
+                            // Don't show expired timed challenges
+                        } else {
+                            // Regular challenge (no time limit)
+                            regular.push(challenge);
+                        }
+                    });
+
                     setChallengesData(data.data);
-                    // Pick a random starting index after data is loaded
-                    if (data.data.length > 0) {
-                        const randomIndex = Math.floor(Math.random() * data.data.length);
+                    setRegularChallenges(regular);
+
+                    // Set active timed challenge (take first one if multiple)
+                    setActiveTimedChallenge(timed.length > 0 ? timed[0] : null);
+
+                    // Pick a random starting index for regular challenges
+                    if (regular.length > 0) {
+                        const randomIndex = Math.floor(Math.random() * regular.length);
                         setCurrentIndex(randomIndex);
                     }
                 }
@@ -67,17 +102,21 @@ export default function Home() {
             }
         }
         fetchChallenges();
+
+        // Refresh every minute to check for new timed challenges
+        const interval = setInterval(fetchChallenges, 60000);
+        return () => clearInterval(interval);
     }, [flags]);
 
     const nextChallenge = () => {
-        setCurrentIndex((prev) => (prev + 1) % challengesData.length);
+        setCurrentIndex((prev) => (prev + 1) % regularChallenges.length);
     };
 
     const prevChallenge = () => {
-        setCurrentIndex((prev) => (prev - 1 + challengesData.length) % challengesData.length);
+        setCurrentIndex((prev) => (prev - 1 + regularChallenges.length) % regularChallenges.length);
     };
 
-    const challenge = currentIndex >= 0 ? challengesData[currentIndex] : null;
+    const challenge = currentIndex >= 0 ? regularChallenges[currentIndex] : null;
 
     return (
         <div className="app-layout">
@@ -115,9 +154,14 @@ export default function Home() {
                             <div style={{ textAlign: 'center', padding: '4rem', color: '#d4af37' }}>
                                 Loading pose challenges...
                             </div>
-                        ) : challengesData.length === 0 ? (
+                        ) : regularChallenges.length === 0 ? (
                             <div style={{ textAlign: 'center', padding: '4rem' }}>
                                 <p>No pose challenges available yet.</p>
+                                {activeTimedChallenge && (
+                                    <p style={{ marginTop: '1rem', color: '#ff6b6b' }}>
+                                        But there's a live timed challenge! Check the notification below.
+                                    </p>
+                                )}
                             </div>
                         ) : (
                             <div className="pose-carousel-container">
@@ -130,8 +174,8 @@ export default function Home() {
 
                                 <div className="carousel-track-container">
                                     <div className="carousel-track">
-                                        {challengesData.map((item, index) => {
-                                            const len = challengesData.length;
+                                        {regularChallenges.map((item, index) => {
+                                            const len = regularChallenges.length;
                                             const isActive = index === currentIndex;
                                             const isPrev = index === (currentIndex - 1 + len) % len;
                                             const isNext = index === (currentIndex + 1) % len;
@@ -213,6 +257,22 @@ export default function Home() {
                     altText="Pose Challenge"
                     downloadUrl={modalImage.downloadUrl}
                     onClose={() => setModalImage(null)}
+                />
+            )}
+
+            {/* Active Timed Challenge Notification */}
+            {activeTimedChallenge && (
+                <ActiveChallengeNotification
+                    challenge={activeTimedChallenge}
+                    onClick={() => setShowTimedChallengeModal(true)}
+                />
+            )}
+
+            {/* Timed Challenge Modal */}
+            {showTimedChallengeModal && activeTimedChallenge && (
+                <TimedChallengeModal
+                    challenge={activeTimedChallenge}
+                    onClose={() => setShowTimedChallengeModal(false)}
                 />
             )}
         </div>
