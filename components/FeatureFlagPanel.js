@@ -8,7 +8,6 @@
 "use client";
 import { useState, useEffect } from 'react';
 import { ToggleLeft, ToggleRight, Sparkles, Calendar, ScanFace, Heart, Upload, Camera } from 'lucide-react';
-import AdminLayout from '@/components/admin/AdminLayout';
 
 export default function FeatureFlagPanel({ adminToken }) {
   const [flags, setFlags] = useState({});
@@ -117,7 +116,12 @@ export default function FeatureFlagPanel({ adminToken }) {
   // Removed loading spinner - use skeleton cards instead to prevent layout shift
 
   return (
-    <AdminLayout title="Feature Flags">
+    <div className="max-w-7xl mx-auto px-6">
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold text-gray-900">Feature Flags</h2>
+        <p className="text-sm text-gray-500 mt-1">Enable or disable features across the entire application</p>
+      </div>
+
       <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))' }}>
         <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#4f46e5' }}>
           Application Features
@@ -271,6 +275,6 @@ export default function FeatureFlagPanel({ adminToken }) {
           </div>
         </div>
       </div>
-    </AdminLayout>
+    </div>
   );
 }

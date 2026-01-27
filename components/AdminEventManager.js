@@ -4,7 +4,6 @@ import { Calendar, Sparkles } from 'lucide-react';
 import { useAdminData } from '@/lib/hooks/useAdminData';
 import { useAdminForm } from '@/lib/hooks/useAdminForm';
 import { useSuccessMessage } from '@/lib/hooks/useSuccessMessage';
-import AdminLayout from '@/components/admin/AdminLayout';
 import AdminFormModal from '@/components/admin/AdminFormModal';
 import AdminGrid from '@/components/admin/AdminGrid';
 
@@ -160,15 +159,18 @@ export default function AdminEventManager({ adminToken }) {
   };
 
   return (
-    <AdminLayout
-      title="Event Timeline Manager"
-      actions={
+    <div className="max-w-7xl mx-auto px-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900">Event Timeline Manager</h2>
+          <p className="text-sm text-gray-500 mt-1">Organize photos into events and detect timeline boundaries</p>
+        </div>
         <button className="btn" onClick={form.openAddForm}>
           + Create Event
         </button>
-      }
-    >
-      {successMessage && <div className="success-banner">{successMessage}</div>}
+      </div>
+
+      {successMessage && <div className="success-banner mb-6">{successMessage}</div>}
 
       {/* Auto-Detect Section */}
       <div className="card" style={{ background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.05), rgba(59, 130, 246, 0.05))' }}>
@@ -392,6 +394,6 @@ export default function AdminEventManager({ adminToken }) {
           </div>
         </div>
       </AdminFormModal>
-    </AdminLayout>
+    </div>
   );
 }

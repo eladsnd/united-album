@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useSuccessMessage } from '@/lib/hooks/useSuccessMessage';
-import AdminLayout from '@/components/admin/AdminLayout';
 import AdminGrid from '@/components/admin/AdminGrid';
 
 export default function AdminPoseManager({ adminToken, timedOnly = false }) {
@@ -272,16 +271,23 @@ export default function AdminPoseManager({ adminToken, timedOnly = false }) {
   };
 
   return (
-    <AdminLayout
-      title={timedOnly ? 'Timed Challenge Manager' : 'Pose Challenge Manager'}
-      actions={
+    <div className="max-w-7xl mx-auto px-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold text-gray-900">
+            {timedOnly ? 'Timed Challenge Manager' : 'Pose Challenge Manager'}
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            {timedOnly ? 'Manage time-limited bonus challenges' : 'Manage pose challenges for guests'}
+          </p>
+        </div>
         <button className="btn" onClick={openAddForm}>
           + Add New Pose
         </button>
-      }
-    >
+      </div>
+
       {successMessage && (
-        <div className="success-banner">
+        <div className="success-banner mb-6">
           {successMessage}
         </div>
       )}
@@ -545,6 +551,6 @@ export default function AdminPoseManager({ adminToken, timedOnly = false }) {
           </div>
         </div>
       )}
-    </AdminLayout>
+    </div>
   );
 }
