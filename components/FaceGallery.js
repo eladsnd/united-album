@@ -72,24 +72,21 @@ export default function AlbumGallery() {
                 setFaceThumbnails([]);
             }
 
-            // Fetch liked status for current user
+            // Fetch liked status for current user (optimized batch fetch)
             const userId = getUserId();
-            if (userId) {
-                const likedSet = new Set();
-                await Promise.all(
-                    photosArray.map(async (photo) => {
-                        try {
-                            const likeRes = await fetch(`/api/photos/${photo.id}/like?userId=${userId}`);
-                            const likeData = await likeRes.json();
-                            if (likeData.liked) {
-                                likedSet.add(photo.id);
-                            }
-                        } catch (err) {
-                            console.error(`Failed to fetch like status for photo ${photo.id}:`, err);
-                        }
-                    })
-                );
-                setLikedPhotos(likedSet);
+            if (userId && photoLikesEnabled) {
+                try {
+                    // Batch fetch all liked photos in ONE API call instead of N calls
+                    const likeRes = await fetch(`/api/photos/likes/batch?userId=${userId}`);
+                    const likeData = await likeRes.json();
+
+                    if (likeData.likedPhotoIds && Array.isArray(likeData.likedPhotoIds)) {
+                        setLikedPhotos(new Set(likeData.likedPhotoIds));
+                    }
+                } catch (err) {
+                    console.error('Failed to fetch liked photos:', err);
+                    // Non-critical error - continue without likes
+                }
             }
         } catch (err) {
             console.error('Failed to fetch photos:', err);
@@ -536,8 +533,6 @@ export default function AlbumGallery() {
                                 // Extract person number for display (person_3 → "3")
                                 const personNumber = face.faceId.replace('person_', '');
 
-                                console.log(`[FaceGallery] ${face.faceId}: hasFaceUrl=${hasFaceUrl}, hasError=${hasError}, url=${face.faceUrl}`);
-
                                 return (
                                     <button
                                         key={face.faceId}
@@ -553,7 +548,6 @@ export default function AlbumGallery() {
                                                     console.error(`[FaceGallery] Image load error for ${face.faceId}:`, e);
                                                     setImageErrors(prev => ({ ...prev, [face.faceId]: true }));
                                                 }}
-                                                onLoad={() => console.log(`[FaceGallery] Image loaded successfully: ${face.faceId}`)}
                                                 loading="lazy"
                                             />
                                         ) : (
@@ -694,7 +688,7 @@ export default function AlbumGallery() {
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
                                 alt="Wedding Photo"
                                 fill
-                                unoptimized={true}
+                                unoptimized={false}
                                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                                 className="gallery-image"
                                 style={{
