@@ -110,10 +110,17 @@ model Event {
 }
 
 model AppSettings {
-  id         String   @id @default("app_settings")  // Singleton pattern
-  gamifyMode Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id               String   @id @default("app_settings")  // Singleton pattern
+
+  // Feature Flags (all default false for opt-in)
+  gamification     Boolean  @default(false)  // Points, leaderboard, challenges
+  events           Boolean  @default(false)  // Event timeline and management
+  faceDetection    Boolean  @default(false)  // Face recognition and filtering
+  photoLikes       Boolean  @default(false)  // Like/unlike photos
+  bulkUpload       Boolean  @default(false)  // Regular photo uploads
+
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 }
 
 model UserScore {
