@@ -22,33 +22,50 @@ import { EventService } from '@/lib/services/EventService';
  */
 async function handleAutoDetect(request) {
   const body = await request.json();
-  const { minGapHours = 2 } = body;
+  const {
+    epsilon = null,          // Auto-detect if null
+    minPoints = 3,           // Min photos per event
+    method = 'dbscan'        // 'dbscan' or 'gaps'
+  } = body;
 
   const eventService = new EventService();
-  const suggestions = await eventService.autoDetectEventGaps(minGapHours);
+
+  // Use smart DBSCAN clustering by default
+  const suggestions = await eventService.autoDetectEventsSmart({
+    epsilon,
+    minPoints,
+    method
+  });
 
   return NextResponse.json({
     success: true,
     data: {
       suggestions,
       parameters: {
-        minGapHours,
+        epsilon: epsilon || 'auto',
+        minPoints,
+        method,
         totalEvents: suggestions.length,
         totalPhotos: suggestions.reduce((sum, s) => sum + s.photoCount, 0)
       }
     },
-    message: `Detected ${suggestions.length} potential event(s) with ${minGapHours}h gap threshold.`,
+    message: `Detected ${suggestions.length} event(s) using ${method} clustering.`,
   });
 }
 
 /**
  * POST /api/admin/events/auto-detect
  *
- * Auto-detect event boundaries from photo timeline (admin only)
+ * Smart event detection using DBSCAN clustering algorithm (admin only)
+ *
+ * Uses density-based clustering to find natural event boundaries and
+ * intelligently names events based on time-of-day and duration patterns.
  *
  * Request (application/json):
  * {
- *   minGapHours: 2  // Minimum gap in hours to consider as event boundary (default: 2)
+ *   epsilon: 60,        // Max time gap in minutes (null = auto-detect, default: null)
+ *   minPoints: 3,       // Min photos per event cluster (default: 3)
+ *   method: "dbscan"    // Clustering method: "dbscan" or "gaps" (default: "dbscan")
  * }
  *
  * Response:
@@ -56,21 +73,27 @@ async function handleAutoDetect(request) {
  *   success: true,
  *   data: {
  *     suggestions: [{
- *       name: "Event 1",
+ *       name: "Ceremony",          // Smart event name
+ *       eventType: "ceremony",     // Event type classification
+ *       confidence: 0.85,          // Name confidence (0-1)
  *       startTime: "2024-06-15T14:00:00Z",
- *       endTime: "2024-06-15T16:30:00Z",
- *       photoCount: 45,
+ *       endTime: "2024-06-15T14:45:00Z",
+ *       duration: 45,              // Minutes
+ *       photoCount: 67,
+ *       photoDensity: 89.3,        // Photos per hour
  *       photoIds: [1, 2, 3, ...],
- *       devices: [{ model: "iPhone 13", count: 20 }, ...],
+ *       devices: [{ model: "iPhone 13", count: 35 }, ...],
  *       suggestedColor: "#3B82F6"
  *     }, ...],
  *     parameters: {
- *       minGapHours: 2,
- *       totalEvents: 3,
- *       totalPhotos: 120
+ *       epsilon: "auto",           // Used epsilon value
+ *       minPoints: 3,
+ *       method: "dbscan",
+ *       totalEvents: 4,
+ *       totalPhotos: 215
  *     }
  *   },
- *   message: "Detected 3 potential event(s) with 2h gap threshold."
+ *   message: "Detected 4 event(s) using dbscan clustering."
  * }
  */
 export const POST = withApi(withFeature(handleAutoDetect, 'events'), { adminOnly: true, rateLimit: 'admin' });
