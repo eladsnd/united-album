@@ -15,9 +15,14 @@ export async function GET() {
         const faceThumbnails = faces.map(face => {
             let faceUrl = null;
 
-            // PRIORITY 1: Use stored face thumbnail from Drive (high-quality crop from original image)
+            // PRIORITY 1: Use stored face thumbnail (high-quality crop from original image)
             if (face.thumbnailDriveId) {
-                faceUrl = `/api/image/${face.thumbnailDriveId}`;
+                // Check if it's a full URL (Cloudinary) or just an ID (Google Drive)
+                if (face.thumbnailDriveId.startsWith('http')) {
+                    faceUrl = face.thumbnailDriveId; // Cloudinary: Direct URL
+                } else {
+                    faceUrl = `/api/image/${face.thumbnailDriveId}`; // Google Drive: Proxy URL
+                }
                 console.log(`[Face Thumbnails] Using stored thumbnail for ${face.faceId}: ${faceUrl}`);
             } else {
                 // FALLBACK: Find ANY photo containing this face and crop from it
