@@ -43,3 +43,4 @@ next-env.d.ts
 *.db
 *.db-journal
 # Note: Keep migration files in version control for deployment
+.env.local.bak
