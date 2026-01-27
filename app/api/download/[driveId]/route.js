@@ -3,6 +3,7 @@ import { getFileStream } from '../../../../lib/googleDrive';
 import { PhotoRepository } from '../../../../lib/repositories/PhotoRepository.js';
 import { applyRateLimit } from '../../../../lib/rateLimit';
 import { downloadDriveFile } from '../../../../lib/streamUtils';
+import { getProviderName } from '../../../../lib/storage/operations';
 
 export async function GET(request, { params }) {
     // Rate limit downloads to prevent API quota exhaustion
@@ -42,26 +43,50 @@ export async function GET(request, { params }) {
         }
         console.log('[Download API] Generated filename:', filename);
 
-        console.log('[Download API] Requesting file from Google Drive...');
+        // Check storage provider
+        const provider = getProviderName();
+        console.log('[Download API] Storage provider:', provider);
 
-        // Use centralized stream utility (DRY principle)
-        const buffer = await downloadDriveFile(getFileStream, driveId);
+        if (provider === 'cloudinary') {
+            // Cloudinary: Redirect to original URL with download parameter
+            // Cloudinary serves original quality by default (no optimization params)
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
 
-        console.log('[Download API] File downloaded, size:', buffer.length);
+            // Check if driveId is already a full URL or a public_id
+            let downloadUrl;
+            if (driveId.startsWith('http')) {
+                // Already a full URL - add download flag
+                downloadUrl = `${driveId}?fl_attachment:${filename}`;
+            } else {
+                // Public ID - construct URL with download flag
+                downloadUrl = `https://res.cloudinary.com/${cloudName}/image/upload/fl_attachment:${filename}/${driveId}`;
+            }
 
-        console.log('[Download API] Sending response with headers:', {
-            'Content-Type': 'image/jpeg',
-            'Content-Disposition': `attachment; filename="${filename}"`,
-            'Content-Length': buffer.length.toString(),
-        });
+            console.log('[Download API] Redirecting to Cloudinary:', downloadUrl);
+            return NextResponse.redirect(downloadUrl);
+        } else {
+            // Google Drive: Proxy download through our API
+            console.log('[Download API] Requesting file from Google Drive...');
 
-        return new NextResponse(buffer, {
-            headers: {
+            // Use centralized stream utility (DRY principle)
+            const buffer = await downloadDriveFile(getFileStream, driveId);
+
+            console.log('[Download API] File downloaded, size:', buffer.length);
+
+            console.log('[Download API] Sending response with headers:', {
                 'Content-Type': 'image/jpeg',
                 'Content-Disposition': `attachment; filename="${filename}"`,
                 'Content-Length': buffer.length.toString(),
-            },
-        });
+            });
+
+            return new NextResponse(buffer, {
+                headers: {
+                    'Content-Type': 'image/jpeg',
+                    'Content-Disposition': `attachment; filename="${filename}"`,
+                    'Content-Length': buffer.length.toString(),
+                },
+            });
+        }
     } catch (error) {
         console.error('[Download API] Error:', error);
         console.error('[Download API] Error stack:', error.stack);
