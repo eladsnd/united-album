@@ -3,8 +3,9 @@ import { useState, useEffect } from 'react';
 import AdminAuth from '../../components/AdminAuth';
 import AdminPoseManager from '../../components/AdminPoseManager';
 import AdminEventManager from '../../components/AdminEventManager';
+import FeatureFlagPanel from '../../components/FeatureFlagPanel';
 import GamifyToggle from '../../components/GamifyToggle';
-import { Image as ImageIcon, Calendar, LogOut } from 'lucide-react';
+import { Image as ImageIcon, Calendar, Settings, LogOut } from 'lucide-react';
 
 export default function AdminPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -86,6 +87,17 @@ export default function AdminPage() {
                             <Calendar size={20} />
                             Event Timeline
                         </button>
+                        <button
+                            onClick={() => setActiveTab('features')}
+                            className={`flex items-center gap-2 px-6 py-4 font-medium transition relative ${
+                                activeTab === 'features'
+                                    ? 'text-blue-600 border-b-2 border-blue-600'
+                                    : 'text-gray-600 hover:text-gray-900 border-b-2 border-transparent'
+                            }`}
+                        >
+                            <Settings size={20} />
+                            Feature Flags
+                        </button>
                     </div>
                 </div>
             </div>
@@ -100,6 +112,11 @@ export default function AdminPage() {
                 )}
                 {activeTab === 'events' && (
                     <AdminEventManager
+                        adminToken={adminToken}
+                    />
+                )}
+                {activeTab === 'features' && (
+                    <FeatureFlagPanel
                         adminToken={adminToken}
                     />
                 )}
