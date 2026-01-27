@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { getUserId } from '../lib/utils/getUserId';
+import { useFeatureFlag } from '../lib/hooks/useFeatureFlag';
 
 /**
  * Leaderboard Component
@@ -21,9 +22,11 @@ import { getUserId } from '../lib/utils/getUserId';
  */
 export default function Leaderboard() {
     const [leaderboard, setLeaderboard] = useState([]);
-    const [gamifyMode, setGamifyMode] = useState(false);
     const [loading, setLoading] = useState(true);
     const [currentUserId, setCurrentUserId] = useState(null);
+
+    // Check if gamification feature is enabled
+    const { enabled: gamificationEnabled } = useFeatureFlag('gamification');
 
     useEffect(() => {
         // Get current user ID
@@ -45,7 +48,6 @@ export default function Leaderboard() {
             const data = await res.json();
 
             if (data.success) {
-                setGamifyMode(data.data.gamifyMode);
                 setLeaderboard(data.data.leaderboard || []);
             }
         } catch (err) {
@@ -55,8 +57,8 @@ export default function Leaderboard() {
         }
     };
 
-    // Don't render if gamify mode is off
-    if (!gamifyMode) {
+    // Don't render if gamification feature is disabled
+    if (!gamificationEnabled) {
         return null;
     }
 

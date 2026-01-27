@@ -14,6 +14,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
+import { withFeature } from '@/lib/api/featureDecorators';
 import { GamificationService } from '@/lib/services/GamificationService';
 
 /**
@@ -51,31 +52,16 @@ async function handleGet(request) {
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
 
-  // Check if gamify mode is enabled
-  const gamifyMode = await gamificationService.isGamifyModeEnabled();
-
-  // Return empty leaderboard if gamify mode is off
-  if (!gamifyMode) {
-    return NextResponse.json({
-      success: true,
-      data: {
-        gamifyMode: false,
-        leaderboard: [],
-      },
-    });
-  }
-
-  // Get leaderboard
+  // Get leaderboard (feature gate handled by decorator)
   const leaderboard = await gamificationService.getLeaderboard(limit);
 
   return NextResponse.json({
     success: true,
     data: {
-      gamifyMode: true,
       leaderboard,
     },
   });
 }
 
-// Apply decorators (public endpoint, no auth required)
-export const GET = withApi(handleGet);
+// Apply decorators (public endpoint, no auth required, feature gated)
+export const GET = withApi(withFeature(handleGet, 'gamification'));
