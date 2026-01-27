@@ -26,10 +26,12 @@ async function handleGetPoses(request) {
   const challengeService = new ChallengeService();
   const challenges = await challengeService.getAllPoses();
 
-  // Transform image Drive IDs to proxy URLs
+  // Transform image paths: only wrap Drive IDs, not full URLs
   const transformedChallenges = challenges.map(challenge => ({
     ...challenge,
-    image: `/api/image/${challenge.image}`, // Convert Drive ID to proxy URL
+    // Cloudinary URLs (https://...) pass through unchanged
+    // Google Drive IDs get wrapped in proxy
+    image: challenge.image?.startsWith('http') ? challenge.image : `/api/image/${challenge.image}`,
   }));
 
   return NextResponse.json({
@@ -58,10 +60,10 @@ async function handleCreatePose(request) {
     folderId,
   });
 
-  // Transform Drive ID to proxy URL for client
+  // Transform image path: only wrap Drive IDs, not full URLs
   const transformedPose = {
     ...newPose,
-    image: `/api/image/${newPose.image}`,
+    image: newPose.image?.startsWith('http') ? newPose.image : `/api/image/${newPose.image}`,
   };
 
   return NextResponse.json({
@@ -92,10 +94,10 @@ async function handleUpdatePose(request) {
     folderId,
   });
 
-  // Transform Drive ID to proxy URL for client
+  // Transform image path: only wrap Drive IDs, not full URLs
   const transformedPose = {
     ...updatedPose,
-    image: `/api/image/${updatedPose.image}`,
+    image: updatedPose.image?.startsWith('http') ? updatedPose.image : `/api/image/${updatedPose.image}`,
   };
 
   return NextResponse.json({
