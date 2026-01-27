@@ -1,7 +1,7 @@
 /**
  * Admin Settings API Route
  *
- * Manages global application settings (gamify mode toggle, etc.)
+ * Manages global application settings including all feature flags.
  *
  * Endpoints:
  * - GET /api/admin/settings - Get current settings (admin only)
@@ -14,7 +14,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
-import { GamificationService } from '@/lib/services/GamificationService';
+import { FeatureFlagService } from '@/lib/services/FeatureFlagService';
 
 /**
  * GET /api/admin/settings
@@ -25,20 +25,21 @@ import { GamificationService } from '@/lib/services/GamificationService';
  * {
  *   success: true,
  *   data: {
- *     id: "app_settings",
- *     gamifyMode: false,
- *     createdAt: "2024-01-...",
- *     updatedAt: "2024-01-..."
+ *     gamification: false,
+ *     events: false,
+ *     faceDetection: false,
+ *     photoLikes: false,
+ *     bulkUpload: false
  *   }
  * }
  */
 async function handleGet(request) {
-  const gamificationService = new GamificationService();
-  const settings = await gamificationService.getSettings();
+  const featureFlags = new FeatureFlagService();
+  const flags = await featureFlags.getAllFlags();
 
   return NextResponse.json({
     success: true,
-    data: settings,
+    data: flags,
   });
 }
 
@@ -49,30 +50,34 @@ async function handleGet(request) {
  *
  * Request body:
  * {
- *   gamifyMode: true  // Toggle gamify mode
+ *   gamification: true,
+ *   events: false,
+ *   ...
  * }
  *
  * Response:
  * {
  *   success: true,
  *   data: {
- *     id: "app_settings",
- *     gamifyMode: true,
- *     ...
+ *     gamification: true,
+ *     events: false,
+ *     faceDetection: false,
+ *     photoLikes: false,
+ *     bulkUpload: false
  *   },
- *   message: "Settings updated successfully."
+ *   message: "Feature flags updated successfully."
  * }
  */
 async function handlePut(request) {
   const body = await request.json();
-  const gamificationService = new GamificationService();
+  const featureFlags = new FeatureFlagService();
 
-  const updatedSettings = await gamificationService.updateSettings(body);
+  const updated = await featureFlags.updateFlags(body);
 
   return NextResponse.json({
     success: true,
-    data: updatedSettings,
-    message: 'Settings updated successfully.',
+    data: updated,
+    message: 'Feature flags updated successfully.',
   });
 }
 
