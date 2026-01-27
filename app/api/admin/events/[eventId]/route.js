@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
+import { withFeature } from '@/lib/api/featureDecorators';
 import { EventService } from '@/lib/services/EventService';
 import { EventRepository } from '@/lib/repositories/EventRepository';
 import { PhotoRepository } from '@/lib/repositories/PhotoRepository';
@@ -89,7 +90,7 @@ async function handleDeleteEvent(request, { params }) {
  *   }
  * }
  */
-export const GET = withApi(handleGetEvent);
+export const GET = withApi(withFeature(handleGetEvent, 'events'));
 
 /**
  * PUT /api/admin/events/[eventId]
@@ -113,7 +114,7 @@ export const GET = withApi(handleGetEvent);
  *   message: "Event updated successfully."
  * }
  */
-export const PUT = withApi(handleUpdateEvent, { adminOnly: true, rateLimit: 'admin' });
+export const PUT = withApi(withFeature(handleUpdateEvent, 'events'), { adminOnly: true, rateLimit: 'admin' });
 
 /**
  * DELETE /api/admin/events/[eventId]
@@ -129,4 +130,4 @@ export const PUT = withApi(handleUpdateEvent, { adminOnly: true, rateLimit: 'adm
  *   data: { id, name }
  * }
  */
-export const DELETE = withApi(handleDeleteEvent, { adminOnly: true, rateLimit: 'admin' });
+export const DELETE = withApi(withFeature(handleDeleteEvent, 'events'), { adminOnly: true, rateLimit: 'admin' });

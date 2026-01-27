@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
+import { withFeature } from '@/lib/api/featureDecorators';
 import { EventService } from '@/lib/services/EventService';
 
 /**
@@ -66,7 +67,7 @@ async function handleCreateEvent(request) {
  *   }, ...]
  * }
  */
-export const GET = withApi(handleGetEvents);
+export const GET = withApi(withFeature(handleGetEvents, 'events'));
 
 /**
  * POST /api/admin/events
@@ -90,4 +91,4 @@ export const GET = withApi(handleGetEvents);
  *   message: "Event created successfully."
  * }
  */
-export const POST = withApi(handleCreateEvent, { adminOnly: true, rateLimit: 'admin' });
+export const POST = withApi(withFeature(handleCreateEvent, 'events'), { adminOnly: true, rateLimit: 'admin' });

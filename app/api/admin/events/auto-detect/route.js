@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
+import { withFeature } from '@/lib/api/featureDecorators';
 import { EventService } from '@/lib/services/EventService';
 
 /**
@@ -72,4 +73,4 @@ async function handleAutoDetect(request) {
  *   message: "Detected 3 potential event(s) with 2h gap threshold."
  * }
  */
-export const POST = withApi(handleAutoDetect, { adminOnly: true, rateLimit: 'admin' });
+export const POST = withApi(withFeature(handleAutoDetect, 'events'), { adminOnly: true, rateLimit: 'admin' });

@@ -9,6 +9,7 @@
 
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
+import { withFeature } from '@/lib/api/featureDecorators';
 import { EventService } from '@/lib/services/EventService';
 
 /**
@@ -65,4 +66,4 @@ async function handleAssignPhotos(request, { params }) {
  *   message: "Assigned 15 photo(s) to event."
  * }
  */
-export const POST = withApi(handleAssignPhotos, { adminOnly: true, rateLimit: 'admin' });
+export const POST = withApi(withFeature(handleAssignPhotos, 'events'), { adminOnly: true, rateLimit: 'admin' });
