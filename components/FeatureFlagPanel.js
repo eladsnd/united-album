@@ -114,16 +114,7 @@ export default function FeatureFlagPanel({ adminToken }) {
     }
   };
 
-  if (loading) {
-    return (
-      <AdminLayout title="Feature Flags">
-        <div style={{ textAlign: 'center', padding: '3rem' }}>
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500" style={{ margin: '0 auto' }}></div>
-          <p style={{ marginTop: '1rem', opacity: 0.6 }}>Loading feature flags...</p>
-        </div>
-      </AdminLayout>
-    );
-  }
+  // Removed loading spinner - use skeleton cards instead to prevent layout shift
 
   return (
     <AdminLayout title="Feature Flags">
@@ -141,6 +132,7 @@ export default function FeatureFlagPanel({ adminToken }) {
           const Icon = feature?.icon;
           const enabled = flags?.[feature?.id] ?? false;
           const isSaving = saving === feature?.id;
+          const isDisabled = loading || isSaving;
 
           return (
             <div
@@ -154,6 +146,7 @@ export default function FeatureFlagPanel({ adminToken }) {
                 transition: 'all 0.3s ease',
                 border: enabled ? `2px solid ${feature.color}20` : '2px solid transparent',
                 background: enabled ? `${feature.color}08` : 'var(--glass)',
+                opacity: loading ? 0.6 : 1,
               }}
             >
               {/* Icon */}
@@ -196,7 +189,7 @@ export default function FeatureFlagPanel({ adminToken }) {
               {/* Toggle Button */}
               <button
                 onClick={() => toggleFeature(feature.id)}
-                disabled={isSaving}
+                disabled={isDisabled}
                 className="btn"
                 style={{
                   display: 'flex',
@@ -214,16 +207,16 @@ export default function FeatureFlagPanel({ adminToken }) {
                   boxShadow: enabled
                     ? `0 6px 16px ${feature.color}40, 0 2px 4px ${feature.color}30`
                     : '0 2px 8px rgba(0,0,0,0.08)',
-                  cursor: isSaving ? 'not-allowed' : 'pointer',
-                  opacity: isSaving ? 0.7 : 1,
+                  cursor: isDisabled ? 'not-allowed' : 'pointer',
+                  opacity: isDisabled ? 0.7 : 1,
                   transition: 'all 0.3s ease',
-                  transform: isSaving ? 'scale(0.98)' : 'scale(1)',
+                  transform: isDisabled ? 'scale(0.98)' : 'scale(1)',
                   width: '160px',
                   justifyContent: 'center',
                   flexShrink: 0,
                 }}
                 onMouseEnter={(e) => {
-                  if (!isSaving) {
+                  if (!isDisabled) {
                     e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
                     e.currentTarget.style.boxShadow = enabled
                       ? `0 8px 20px ${feature.color}50, 0 4px 8px ${feature.color}40`
@@ -231,7 +224,7 @@ export default function FeatureFlagPanel({ adminToken }) {
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!isSaving) {
+                  if (!isDisabled) {
                     e.currentTarget.style.transform = 'scale(1)';
                     e.currentTarget.style.boxShadow = enabled
                       ? `0 6px 16px ${feature.color}40, 0 2px 4px ${feature.color}30`
