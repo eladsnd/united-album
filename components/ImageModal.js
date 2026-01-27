@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { X, Download, ChevronLeft, ChevronRight, Heart } from 'lucide-react';
 
-export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, onNext, onPrev, hasNext, hasPrev, photoId, isLiked, likeCount, onToggleLike }) {
+export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, onNext, onPrev, hasNext, hasPrev, photoId, isLiked, likeCount, onToggleLike, photoLikesEnabled = true }) {
   // Close on ESC key, navigate with arrow keys
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -51,7 +51,7 @@ export default function ImageModal({ imageUrl, altText, onClose, downloadUrl, on
         </a>
       )}
 
-      {photoId && onToggleLike && (
+      {photoLikesEnabled && photoId && onToggleLike && (
         <button
           className={`modal-like-btn ${isLiked ? 'liked' : ''}`}
           onClick={(e) => {

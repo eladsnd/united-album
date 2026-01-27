@@ -47,11 +47,14 @@ export default function Leaderboard() {
             const res = await fetch('/api/leaderboard');
             const data = await res.json();
 
-            if (data.success) {
-                setLeaderboard(data.data.leaderboard || []);
+            if (data.success && data.data) {
+                // Defensive: Ensure we have an array
+                const leaderboardData = data.data.leaderboard || [];
+                setLeaderboard(Array.isArray(leaderboardData) ? leaderboardData : []);
             }
         } catch (err) {
             console.error('[Leaderboard] Error fetching leaderboard:', err);
+            setLeaderboard([]);  // Set to empty array on error
         } finally {
             setLoading(false);
         }

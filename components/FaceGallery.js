@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { Download, Heart, Loader2 } from 'lucide-react';
 import { getUserId } from '../lib/utils/getUserId';
 import ImageModal from './ImageModal';
+import { useFeatureFlags } from '@/lib/hooks/useFeatureFlag';
 
 // Skeleton loader component
 function GallerySkeleton() {
@@ -19,6 +20,11 @@ function GallerySkeleton() {
 }
 
 export default function AlbumGallery() {
+    // Feature flags
+    const { flags } = useFeatureFlags();
+    const photoLikesEnabled = flags?.photoLikes ?? false;
+    const faceDetectionEnabled = flags?.faceDetection ?? false;
+
     const [photos, setPhotos] = useState([]);
     const [faceThumbnails, setFaceThumbnails] = useState([]);
     const [challenges, setChallenges] = useState([]); // Pose challenges from database
@@ -58,7 +64,13 @@ export default function AlbumGallery() {
             const facesRes = await fetch('/api/face-thumbnails');
             const facesData = await facesRes.json();
             console.log('[FaceGallery] Face thumbnails:', facesData);
-            setFaceThumbnails(facesData);
+            // Ensure facesData is an array before setting
+            if (Array.isArray(facesData)) {
+                setFaceThumbnails(facesData);
+            } else {
+                console.error('[FaceGallery] Face thumbnails API returned non-array:', facesData);
+                setFaceThumbnails([]);
+            }
 
             // Fetch liked status for current user
             const userId = getUserId();
@@ -406,22 +418,20 @@ export default function AlbumGallery() {
     };
 
     // Extract unique faces from all photos (use mainFaceId for grouping)
-    const allMainFaces = photos.map(p => p.mainFaceId || p.faceId).filter(Boolean);
+    const allMainFaces = photos?.map(p => p?.mainFaceId || p?.faceId).filter(Boolean) ?? [];
     const uniqueFaces = [...new Set(allMainFaces)];
-    const uniquePoses = [...new Set(photos.map(p => p.poseId).filter(Boolean))]
-
-        ;
+    const uniquePoses = [...new Set(photos?.map(p => p?.poseId).filter(Boolean) ?? [])];
 
     const filteredPhotos = useMemo(() => {
-        return photos.filter(p => {
+        return photos?.filter(p => {
             // Filter by ANY face in photo (not just main face)
-            const faceIds = p.faceIds || [p.mainFaceId || p.faceId || 'unknown'];
+            const faceIds = p?.faceIds || [p?.mainFaceId || p?.faceId || 'unknown'];
             const faceMatch = faceFilter === 'all' || faceIds.includes(faceFilter);
-            const poseMatch = poseFilter === 'all' || p.poseId === poseFilter;
-            const eventMatch = eventFilter === 'all' || p.eventId === eventFilter;
-            const likeMatch = likeFilter === 'all' || likedPhotos.has(p.id);
+            const poseMatch = poseFilter === 'all' || p?.poseId === poseFilter;
+            const eventMatch = eventFilter === 'all' || p?.eventId === eventFilter;
+            const likeMatch = likeFilter === 'all' || likedPhotos.has(p?.id);
             return faceMatch && poseMatch && eventMatch && likeMatch;
-        });
+        }) ?? [];
     }, [photos, faceFilter, poseFilter, eventFilter, likeFilter, likedPhotos]);
 
     return (
@@ -429,26 +439,29 @@ export default function AlbumGallery() {
             <h2 style={{ fontWeight: '400', marginBottom: '2rem', fontFamily: "'Playfair Display', serif" }}>Album Gallery</h2>
 
             <div className="filter-container">
-                <div className="filter-group">
-                    <span className="filter-label">Filter by Likes</span>
-                    <div className="filter-chips">
-                        <button className={`chip ${likeFilter === 'all' ? 'active' : ''}`} onClick={() => setLikeFilter('all')}>
-                            All Photos
-                        </button>
-                        <button className={`chip ${likeFilter === 'liked' ? 'active' : ''}`} onClick={() => setLikeFilter('liked')}>
-                            ❤️ Liked ({likedPhotos.size})
-                        </button>
+                {/* Only show Likes filter if photoLikes feature is enabled */}
+                {photoLikesEnabled && (
+                    <div className="filter-group">
+                        <span className="filter-label">Filter by Likes</span>
+                        <div className="filter-chips">
+                            <button className={`chip ${likeFilter === 'all' ? 'active' : ''}`} onClick={() => setLikeFilter('all')}>
+                                All Photos
+                            </button>
+                            <button className={`chip ${likeFilter === 'liked' ? 'active' : ''}`} onClick={() => setLikeFilter('liked')}>
+                                ❤️ Liked ({likedPhotos.size})
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div className="filter-group">
                     <span className="filter-label">Filter by Pose</span>
                     <div className="filter-chips">
                         <button className={`chip ${poseFilter === 'all' ? 'active' : ''}`} onClick={() => setPoseFilter('all')}>All Poses</button>
-                        {uniquePoses.map(poseId => {
+                        {uniquePoses?.map(poseId => {
                             // Find the pose title from database
-                            const challenge = challenges.find(c => c.id === poseId);
-                            const displayName = challenge ? challenge.title : poseId;
+                            const challenge = challenges?.find(c => c?.id === poseId);
+                            const displayName = challenge?.title || poseId;
 
                             return (
                                 <button
@@ -463,23 +476,23 @@ export default function AlbumGallery() {
                     </div>
                 </div>
 
-                {events.length > 0 && (
+                {events?.length > 0 && (
                     <div className="filter-group">
                         <span className="filter-label">Filter by Event</span>
                         <div className="filter-chips">
                             <button className={`chip ${eventFilter === 'all' ? 'active' : ''}`} onClick={() => setEventFilter('all')}>All Events</button>
-                            {events.map(event => {
-                                const eventDate = new Date(event.startTime).toLocaleDateString('en-US', {
+                            {events?.map(event => {
+                                const eventDate = new Date(event?.startTime).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric'
                                 });
                                 return (
                                     <button
-                                        key={event.id}
-                                        className={`chip ${eventFilter === event.id ? 'active' : ''}`}
-                                        onClick={() => setEventFilter(event.id)}
+                                        key={event?.id}
+                                        className={`chip ${eventFilter === event?.id ? 'active' : ''}`}
+                                        onClick={() => setEventFilter(event?.id)}
                                         style={{
-                                            borderLeft: `3px solid ${event.color}`,
+                                            borderLeft: `3px solid ${event?.color || '#3B82F6'}`,
                                             paddingLeft: '10px'
                                         }}
                                     >
@@ -491,9 +504,11 @@ export default function AlbumGallery() {
                     </div>
                 )}
 
-                <div className="filter-group">
-                    <span className="filter-label">Filter by Face</span>
-                    <div className="face-thumbnails-container">
+                {/* Only show Face filter if faceDetection feature is enabled */}
+                {faceDetectionEnabled && (
+                    <div className="filter-group">
+                        <span className="filter-label">Filter by Face</span>
+                        <div className="face-thumbnails-container">
                         {faceScrollIndex > 0 && (
                             <button
                                 className="scroll-arrow left"
@@ -563,6 +578,7 @@ export default function AlbumGallery() {
                         )}
                     </div>
                 </div>
+                )}
             </div>
 
             {loading ? (
@@ -592,7 +608,7 @@ export default function AlbumGallery() {
                             )}
                         </button>
 
-                        {likedPhotos.size > 0 && (
+                        {photoLikesEnabled && likedPhotos.size > 0 && (
                             <button
                                 className="btn btn-secondary"
                                 onClick={() => handleDownloadAlbum('liked')}
@@ -659,19 +675,21 @@ export default function AlbumGallery() {
                             >
                                 <Download size={18} />
                             </a>
-                            <button
-                                className={`like-photo-btn ${isLiked(photo.id) ? 'liked' : ''}`}
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleLike(photo.id);
-                                }}
-                                aria-label={isLiked(photo.id) ? "Unlike photo" : "Like photo"}
-                            >
-                                <Heart size={20} fill={isLiked(photo.id) ? 'currentColor' : 'none'} />
-                                {getLikeCount(photo.id) > 0 && (
-                                    <span className="like-count">{getLikeCount(photo.id)}</span>
-                                )}
-                            </button>
+                            {photoLikesEnabled && (
+                                <button
+                                    className={`like-photo-btn ${isLiked(photo.id) ? 'liked' : ''}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleLike(photo.id);
+                                    }}
+                                    aria-label={isLiked(photo.id) ? "Unlike photo" : "Like photo"}
+                                >
+                                    <Heart size={20} fill={isLiked(photo.id) ? 'currentColor' : 'none'} />
+                                    {getLikeCount(photo.id) > 0 && (
+                                        <span className="like-count">{getLikeCount(photo.id)}</span>
+                                    )}
+                                </button>
+                            )}
                             <Image
                                 src={photo.url && photo.url !== '#' ? photo.url : '/challenges/dip.png'}
                                 alt="Wedding Photo"
@@ -714,6 +732,7 @@ export default function AlbumGallery() {
                     isLiked={likedPhotos.has(modalImage.photoId)}
                     likeCount={likeCounts[modalImage.photoId] || 0}
                     onToggleLike={toggleLike}
+                    photoLikesEnabled={photoLikesEnabled}
                     onClose={() => setModalImage(null)}
                     onNext={() => {
                         const currentIndex = filteredPhotos.findIndex(p => p.id === modalImage.photoId);
