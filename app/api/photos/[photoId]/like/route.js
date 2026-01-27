@@ -16,9 +16,11 @@
  */
 
 import { NextResponse } from 'next/server';
+import { withApi } from '@/lib/api/decorators';
+import { withFeature } from '@/lib/api/featureDecorators';
 import prisma from '@/lib/prisma';
 
-export async function POST(request, { params }) {
+async function handlePost(request, { params }) {
     try {
         const { photoId } = await params;
         const body = await request.json();
@@ -100,10 +102,7 @@ export async function POST(request, { params }) {
     }
 }
 
-/**
- * GET /api/photos/[photoId]/like?userId=xxx - Check if user has liked photo
- */
-export async function GET(request, { params }) {
+async function handleGet(request, { params }) {
     try {
         const { photoId } = await params;
         const { searchParams } = new URL(request.url);
@@ -151,3 +150,10 @@ export async function GET(request, { params }) {
         );
     }
 }
+
+/**
+ * POST /api/photos/[photoId]/like - Toggle like (feature gated)
+ * GET /api/photos/[photoId]/like?userId=xxx - Check if user has liked photo (feature gated)
+ */
+export const POST = withApi(withFeature(handlePost, 'photoLikes'));
+export const GET = withApi(withFeature(handleGet, 'photoLikes'));
