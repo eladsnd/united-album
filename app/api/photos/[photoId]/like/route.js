@@ -18,13 +18,19 @@
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
 import { withFeature } from '@/lib/api/featureDecorators';
+import { ValidationError } from '@/lib/api/errors';
 import prisma from '@/lib/prisma';
 
 async function handlePost(request, { params }) {
     try {
         const { photoId } = await params;
         const body = await request.json();
-        const { userId } = body;
+        const { userId, eventId } = body;
+
+        // CRITICAL: Require eventId for multi-tenancy isolation
+        if (!eventId) {
+            throw new ValidationError('eventId is required for data isolation');
+        }
 
         if (!userId) {
             return NextResponse.json(
@@ -38,6 +44,27 @@ async function handlePost(request, { params }) {
             return NextResponse.json(
                 { error: 'Invalid photo ID' },
                 { status: 400 }
+            );
+        }
+
+        // CRITICAL: Verify photo belongs to this event before allowing like
+        const photo = await prisma.photo.findUnique({
+            where: { id: photoIdInt },
+            select: { eventId: true }
+        });
+
+        if (!photo) {
+            return NextResponse.json(
+                { error: 'Photo not found' },
+                { status: 404 }
+            );
+        }
+
+        if (photo.eventId !== eventId) {
+            console.warn(`[Photo Like API] Attempted to like photo ${photoIdInt} from different event (photo: ${photo.eventId}, requested: ${eventId})`);
+            return NextResponse.json(
+                { error: 'Photo not found in this event' },
+                { status: 403 }
             );
         }
 
@@ -95,6 +122,15 @@ async function handlePost(request, { params }) {
 
     } catch (error) {
         console.error('[Photo Like API] Error:', error);
+
+        // Re-throw ValidationError (like missing eventId) without fallback
+        if (error instanceof ValidationError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
         return NextResponse.json(
             { error: 'Failed to toggle like' },
             { status: 500 }
@@ -107,6 +143,12 @@ async function handleGet(request, { params }) {
         const { photoId } = await params;
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
+        const eventId = searchParams.get('eventId');
+
+        // CRITICAL: Require eventId for multi-tenancy isolation
+        if (!eventId) {
+            throw new ValidationError('eventId is required for data isolation');
+        }
 
         if (!userId) {
             return NextResponse.json(
@@ -123,6 +165,27 @@ async function handleGet(request, { params }) {
             );
         }
 
+        // CRITICAL: Verify photo belongs to this event before returning like status
+        const photo = await prisma.photo.findUnique({
+            where: { id: photoIdInt },
+            select: { eventId: true, likeCount: true }
+        });
+
+        if (!photo) {
+            return NextResponse.json(
+                { error: 'Photo not found' },
+                { status: 404 }
+            );
+        }
+
+        if (photo.eventId !== eventId) {
+            console.warn(`[Photo Like API] Attempted to check like status for photo ${photoIdInt} from different event (photo: ${photo.eventId}, requested: ${eventId})`);
+            return NextResponse.json(
+                { error: 'Photo not found in this event' },
+                { status: 403 }
+            );
+        }
+
         const like = await prisma.photoLike.findUnique({
             where: {
                 photoId_userId: {
@@ -132,18 +195,22 @@ async function handleGet(request, { params }) {
             }
         });
 
-        const photo = await prisma.photo.findUnique({
-            where: { id: photoIdInt },
-            select: { likeCount: true }
-        });
-
         return NextResponse.json({
             liked: !!like,
-            likeCount: photo?.likeCount || 0
+            likeCount: photo.likeCount || 0
         });
 
     } catch (error) {
         console.error('[Photo Like API] Error:', error);
+
+        // Re-throw ValidationError (like missing eventId) without fallback
+        if (error instanceof ValidationError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
         return NextResponse.json(
             { error: 'Failed to get like status' },
             { status: 500 }

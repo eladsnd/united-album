@@ -1,24 +1,47 @@
 import { NextResponse } from 'next/server';
 import { getPhotoStream } from '../../../../lib/storage/operations';
+import { PhotoRepository } from '../../../../lib/repositories/PhotoRepository.js';
+import { ValidationError } from '../../../../lib/api/errors';
 import sharp from 'sharp';
 
-// GET /api/face-crop/[driveId] - Serve cropped face image (provider-agnostic)
+// GET /api/face-crop/[driveId] - Serve cropped face image (provider-agnostic, event-scoped)
 export async function GET(request, { params }) {
     try {
         const { driveId } = await params; // Next.js 15+ requires awaiting params
         const { searchParams } = new URL(request.url);
 
+        const eventId = searchParams.get('eventId');
         let x = parseInt(searchParams.get('x') || '0');
         let y = parseInt(searchParams.get('y') || '0');
         let w = parseInt(searchParams.get('w') || '100');
         let h = parseInt(searchParams.get('h') || '100');
 
-        console.log(`[Face Crop API] fileId: ${driveId}, crop: {x:${x}, y:${y}, w:${w}, h:${h}}`);
+        console.log(`[Face Crop API] fileId: ${driveId}, event: ${eventId}, crop: {x:${x}, y:${y}, w:${w}, h:${h}}`);
 
         if (!driveId) {
             console.error('[Face Crop API] Missing file ID parameter');
             return NextResponse.json({ error: 'Missing file ID' }, { status: 400 });
         }
+
+        // CRITICAL: Require eventId for multi-tenancy isolation
+        if (!eventId) {
+            throw new ValidationError('eventId is required for data isolation');
+        }
+
+        // CRITICAL: Verify photo belongs to event
+        const photoRepo = new PhotoRepository();
+        const eventPhotos = await photoRepo.findMany({
+            where: { eventId }, // CRITICAL: Filter by eventId
+        });
+
+        const photo = eventPhotos.find(p => p.driveId === driveId);
+
+        if (!photo) {
+            console.warn(`[Face Crop API] Photo ${driveId} not found in event ${eventId}`);
+            return NextResponse.json({ error: 'Photo not found in this event' }, { status: 403 });
+        }
+
+        console.log(`[Face Crop API] Verified photo ${driveId} belongs to event ${eventId}`);
 
         // Get the full image from storage provider
         const { stream: imageStream } = await getPhotoStream(driveId);

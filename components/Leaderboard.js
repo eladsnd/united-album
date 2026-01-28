@@ -3,14 +3,16 @@ import { useState, useEffect } from 'react';
 import { Trophy, Medal, Award } from 'lucide-react';
 import { getUserId } from '../lib/utils/getUserId';
 import { useFeatureFlag } from '../lib/hooks/useFeatureFlag';
+import { useEventContext } from '../lib/hooks/useEventContext';
 
 /**
- * Leaderboard Component
+ * Leaderboard Component (Event-Scoped)
  *
- * Displays top 10 users with points in gamification mode.
+ * Displays top 10 users with points in gamification mode FOR CURRENT EVENT.
  * Only shows when gamify mode is enabled.
  *
  * Features:
+ * - Event-scoped leaderboard
  * - Auto-updates every 30 seconds
  * - Shows rank with medals for top 3 (🥇🥈🥉)
  * - Highlights current user's row
@@ -28,10 +30,19 @@ export default function Leaderboard() {
     // Check if gamification feature is enabled
     const { enabled: gamificationEnabled } = useFeatureFlag('gamification');
 
+    // Get current event ID
+    const { currentEventId } = useEventContext();
+
     useEffect(() => {
         // Get current user ID
         const userId = getUserId();
         setCurrentUserId(userId);
+
+        // Don't fetch if no event context
+        if (!currentEventId) {
+            setLoading(false);
+            return;
+        }
 
         // Fetch leaderboard initially
         fetchLeaderboard();
@@ -40,11 +51,13 @@ export default function Leaderboard() {
         const interval = setInterval(fetchLeaderboard, 30000);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [currentEventId]);
 
     const fetchLeaderboard = async () => {
+        if (!currentEventId) return;
+
         try {
-            const res = await fetch('/api/leaderboard');
+            const res = await fetch(`/api/leaderboard?eventId=${currentEventId}`);
             const data = await res.json();
 
             if (data.success && data.data) {

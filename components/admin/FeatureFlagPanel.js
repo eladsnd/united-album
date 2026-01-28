@@ -9,10 +9,15 @@
 import { useState, useEffect } from 'react';
 import { ToggleLeft, ToggleRight, Sparkles, Calendar, ScanFace, Heart, Upload, Camera } from 'lucide-react';
 
-export default function FeatureFlagPanel({ adminToken }) {
+export default function FeatureFlagPanel({ adminToken, eventId = null }) {
   const [flags, setFlags] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(null);
+
+  // Use event-specific endpoint if eventId is provided
+  const settingsEndpoint = eventId
+    ? `/api/events/${eventId}/settings`
+    : '/api/admin/settings';
 
   const features = [
     {
@@ -71,8 +76,8 @@ export default function FeatureFlagPanel({ adminToken }) {
 
   const fetchFlags = async () => {
     try {
-      const res = await fetch('/api/admin/settings', {
-        headers: { Authorization: `Bearer ${adminToken}` },
+      const res = await fetch(settingsEndpoint, {
+        headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
       });
       const data = await res.json();
 
@@ -90,11 +95,11 @@ export default function FeatureFlagPanel({ adminToken }) {
     setSaving(featureId);
 
     try {
-      const res = await fetch('/api/admin/settings', {
+      const res = await fetch(settingsEndpoint, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${adminToken}`,
+          ...(adminToken ? { Authorization: `Bearer ${adminToken}` } : {}),
         },
         body: JSON.stringify({
           [featureId]: !flags[featureId],
@@ -119,15 +124,10 @@ export default function FeatureFlagPanel({ adminToken }) {
     <div className="max-w-7xl mx-auto px-6">
       <div className="mb-6">
         <h2 className="text-2xl font-semibold text-gray-900">Feature Flags</h2>
-        <p className="text-sm text-gray-500 mt-1">Enable or disable features across the entire application</p>
-      </div>
-
-      <div className="card" style={{ marginBottom: '1.5rem', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(168, 85, 247, 0.05))' }}>
-        <h3 style={{ fontSize: '1.125rem', fontWeight: '600', marginBottom: '0.5rem', color: '#4f46e5' }}>
-          Application Features
-        </h3>
-        <p style={{ opacity: 0.7, fontSize: '0.875rem' }}>
-          Enable or disable features across the entire application. Changes take effect immediately.
+        <p className="text-sm text-gray-500 mt-1">
+          {eventId
+            ? 'Enable or disable features for this event. Changes take effect immediately.'
+            : 'Enable or disable features across the entire application'}
         </p>
       </div>
 

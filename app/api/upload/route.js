@@ -53,6 +53,7 @@ async function handleUpload(request) {
  * - folderId: Google Drive folder ID (optional, uses env default)
  * - poseId: Pose challenge ID (optional, defaults to 'unknown_pose')
  * - uploaderId: Client-generated session ID (optional)
+ * - eventId: Event ID for multi-tenancy (optional, defaults to 'default-event')
  *
  * Response:
  * {

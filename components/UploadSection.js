@@ -5,7 +5,7 @@ import { detectFaceInBrowser, loadFaceModels } from '../utils/clientFaceDetectio
 import { useToast } from './ToastContainer';
 import PointsCelebration from './PointsCelebration';
 
-export default function UploadSection({ folderId, poseTitle }) {
+export default function UploadSection({ folderId, poseTitle, eventId = null }) {
     const [status, setStatus] = useState('idle'); // idle, analyzing, uploading, success, error
     const [uploadedUrl, setUploadedUrl] = useState(null);
     const [errorMessage, setErrorMessage] = useState('');
@@ -145,6 +145,7 @@ export default function UploadSection({ folderId, poseTitle }) {
             formData.append('uploaderId', getUploaderId()); // Add uploader ID
             if (folderId) formData.append('folderId', folderId);
             if (poseTitle) formData.append('poseId', poseTitle);
+            if (eventId) formData.append('eventId', eventId); // Multi-tenancy: Associate photo with event
 
             setUploadProgress(40);
             const uploadData = await uploadWithRetry(formData);
@@ -172,14 +173,14 @@ export default function UploadSection({ folderId, poseTitle }) {
 
                     setUploadProgress(60);
 
-                    // Run face detection on the Drive version
-                    const result = await detectFaceInBrowser(imageFile);
+                    // Run face detection on the Drive version (event-scoped)
+                    const result = await detectFaceInBrowser(imageFile, eventId);
 
                     setUploadProgress(90);
 
                 if (result.faceIds && result.faceIds[0] !== 'unknown') {
-                    // Fetch existing faces to check which ones already have thumbnails
-                    const facesResponse = await fetch('/api/faces');
+                    // Fetch existing faces to check which ones already have thumbnails (event-scoped)
+                    const facesResponse = await fetch(`/api/faces?eventId=${eventId}`);
                     const existingFaces = await facesResponse.json();
                     const facesWithThumbnails = new Set(
                         existingFaces
@@ -197,6 +198,7 @@ export default function UploadSection({ folderId, poseTitle }) {
                     const thumbFormData = new FormData();
                     thumbFormData.append('photoId', uploadData.photo.id);
                     thumbFormData.append('driveId', photoId);
+                    thumbFormData.append('eventId', eventId); // CRITICAL: Include eventId for multi-tenancy
                     thumbFormData.append('faceIds', result.faceIds.join(','));
                     thumbFormData.append('mainFaceId', result.mainFaceId);
                     thumbFormData.append('faceBoxes', JSON.stringify(result.boxes));
@@ -254,7 +256,7 @@ export default function UploadSection({ folderId, poseTitle }) {
         } finally {
             setIsUploading(false);
         }
-    }, [isUploading, modelsReady, folderId, poseTitle, uploadWithRetry, toast]);
+    }, [isUploading, modelsReady, folderId, poseTitle, eventId, uploadWithRetry, toast]);
 
     const reset = () => {
         setStatus('idle');

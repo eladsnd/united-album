@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { listFiles, isGoogleDrive } from '../../../lib/storage/operations';
 import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
+import { ValidationError } from '../../../lib/api/errors';
 
 export async function GET(request) {
     try {
@@ -8,17 +9,24 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '20');
+        const eventId = searchParams.get('eventId');
+
+        // CRITICAL: Require eventId for multi-tenancy isolation
+        if (!eventId) {
+            throw new ValidationError('eventId is required for data isolation');
+        }
 
         // Calculate skip value for pagination
         const skip = (page - 1) * limit;
 
         const photoRepo = new PhotoRepository();
 
-        // Get total count for pagination metadata
-        const totalCount = await photoRepo.count();
+        // Get total count for pagination metadata (event-specific)
+        const totalCount = await photoRepo.count({ where: { eventId } });
 
-        // Get paginated photos
+        // Get paginated photos (event-specific ONLY)
         const localPhotos = await photoRepo.findMany({
+            where: { eventId }, // CRITICAL: Filter by eventId to prevent data leaks
             orderBy: { timestamp: 'desc' },
             skip: skip,
             take: limit,
@@ -95,10 +103,29 @@ export async function GET(request) {
         });
     } catch (error) {
         console.error('Error fetching/syncing photos:', error);
+
+        // Re-throw ValidationError (like missing eventId) without fallback
+        if (error instanceof ValidationError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
         // Fallback to local photos if Drive check fails
         try {
+            const { searchParams } = new URL(request.url);
+            const eventId = searchParams.get('eventId');
+
+            if (!eventId) {
+                throw new ValidationError('eventId is required for data isolation');
+            }
+
             const photoRepo = new PhotoRepository();
-            const fallbackPhotos = await photoRepo.findAll();
+            const fallbackPhotos = await photoRepo.findMany({
+                where: { eventId }, // CRITICAL: Filter by eventId even in fallback
+            });
+
             return NextResponse.json({
                 photos: fallbackPhotos,
                 pagination: {
@@ -112,6 +139,7 @@ export async function GET(request) {
         } catch (fallbackError) {
             console.error('Error fetching fallback photos:', fallbackError);
             return NextResponse.json({
+                error: 'Failed to fetch photos',
                 photos: [],
                 pagination: {
                     page: 1,
@@ -120,7 +148,7 @@ export async function GET(request) {
                     totalPages: 0,
                     hasMore: false
                 }
-            });
+            }, { status: 500 });
         }
     }
 }

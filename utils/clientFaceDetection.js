@@ -36,9 +36,10 @@ export async function loadFaceModels() {
 /**
  * Extract face descriptor from an image file
  * @param {File} imageFile - The image file to analyze
+ * @param {string} eventId - Event ID for multi-tenancy isolation (optional for backward compatibility)
  * @returns {Promise<{descriptors: Array, faceIds: Array<string>, mainFaceId: string, boxes: Array}>}
  */
-export async function detectFaceInBrowser(imageFile) {
+export async function detectFaceInBrowser(imageFile, eventId = null) {
     try {
         // Ensure models are loaded
         const loaded = await loadFaceModels();
@@ -89,7 +90,7 @@ export async function detectFaceInBrowser(imageFile) {
         const results = [];
         for (const detection of sortedDetections) {
             const descriptor = Array.from(detection.descriptor);
-            const faceId = await matchFaceDescriptor(descriptor);
+            const faceId = await matchFaceDescriptor(descriptor, eventId);
             const box = {
                 x: Math.round(detection.detection.box.x),
                 y: Math.round(detection.detection.box.y),
@@ -105,10 +106,11 @@ export async function detectFaceInBrowser(imageFile) {
                     body: JSON.stringify({
                         faceId,
                         descriptor,
-                        box
+                        box,
+                        eventId // CRITICAL: Include eventId for multi-tenancy
                     })
                 });
-                console.log(`[Client Face Detection] Saved descriptor for ${faceId}`);
+                console.log(`[Client Face Detection] Saved descriptor for ${faceId} in event ${eventId}`);
             } catch (error) {
                 console.error(`[Client Face Detection] Failed to save descriptor for ${faceId}:`, error);
             }
@@ -225,17 +227,21 @@ function calculateAverageDescriptor(descriptors) {
 /**
  * Match a face descriptor against known faces (with multi-descriptor averaging)
  * @param {number[]} descriptor - 128-dimensional face descriptor
+ * @param {string} eventId - Event ID for multi-tenancy isolation (optional)
  * @returns {Promise<string>} - Face ID (person_1, person_2, etc. - human-friendly numbering)
  */
-async function matchFaceDescriptor(descriptor) {
+async function matchFaceDescriptor(descriptor, eventId = null) {
     try {
-        // Fetch known faces from server
-        const response = await fetch('/api/faces');
+        // Fetch known faces from server (event-scoped)
+        const url = eventId ? `/api/faces?eventId=${eventId}` : '/api/faces';
+        const response = await fetch(url);
         const knownFaces = await response.json();
 
         if (knownFaces.length === 0) {
-            // First face - assign person_1 (human-friendly numbering starts at 1)
-            return 'person_1';
+            // First face - assign event-specific ID (human-friendly numbering starts at 1)
+            // CRITICAL: Prefix with eventId to prevent cross-event ID conflicts
+            const faceId = eventId ? `${eventId}_person_1` : 'person_1';
+            return faceId;
         }
 
         let bestMatch = null;
@@ -283,14 +289,20 @@ async function matchFaceDescriptor(descriptor) {
         }
 
         // New face - assign next available ID (human-friendly: 1, 2, 3...)
-        // Find the highest existing person number
+        // CRITICAL: Prefix with eventId to prevent cross-event ID conflicts
+        // Find the highest existing person number for THIS event
+        const eventPrefix = eventId ? `${eventId}_` : '';
+        const personPattern = eventId
+            ? new RegExp(`^${eventId}_person_(\\d+)$`)
+            : /^person_(\d+)$/;
+
         const personNumbers = knownFaces
-            .map(f => f.faceId.match(/person_(\d+)/))
+            .map(f => f.faceId.match(personPattern))
             .filter(match => match)
             .map(match => parseInt(match[1]));
 
         const maxNumber = personNumbers.length > 0 ? Math.max(...personNumbers) : 0;
-        const nextId = `person_${maxNumber + 1}`;
+        const nextId = `${eventPrefix}person_${maxNumber + 1}`;
 
         console.log(`[Client Face Detection] New face detected: ${nextId} (best distance: ${bestDistance.toFixed(3)}, threshold: ${threshold})`);
         return nextId;

@@ -19,7 +19,7 @@ function GallerySkeleton() {
     );
 }
 
-export default function AlbumGallery() {
+export default function AlbumGallery({ eventId = null }) {
     // Feature flags
     const { flags } = useFeatureFlags();
     const photoLikesEnabled = flags?.photoLikes ?? false;
@@ -45,9 +45,14 @@ export default function AlbumGallery() {
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    // Use event-specific API if eventId is provided
+    const photosEndpoint = eventId
+        ? `/api/events/${eventId}/photos?page=1&limit=20`
+        : '/api/photos?page=1&limit=20';
+
     const fetchPhotos = async () => {
         try {
-            const res = await fetch('/api/photos?page=1&limit=20');
+            const res = await fetch(photosEndpoint);
             const data = await res.json();
             const photosArray = data.photos || data; // Handle both new and old response formats
             setPhotos(photosArray);
@@ -60,24 +65,26 @@ export default function AlbumGallery() {
             });
             setLikeCounts(counts);
 
-            // Fetch face thumbnails
-            const facesRes = await fetch('/api/face-thumbnails');
-            const facesData = await facesRes.json();
-            console.log('[FaceGallery] Face thumbnails:', facesData);
-            // Ensure facesData is an array before setting
-            if (Array.isArray(facesData)) {
-                setFaceThumbnails(facesData);
-            } else {
-                console.error('[FaceGallery] Face thumbnails API returned non-array:', facesData);
-                setFaceThumbnails([]);
+            // Fetch face thumbnails (event-scoped)
+            if (eventId) {
+                const facesRes = await fetch(`/api/face-thumbnails?eventId=${eventId}`);
+                const facesData = await facesRes.json();
+                console.log('[FaceGallery] Face thumbnails:', facesData);
+                // Ensure facesData is an array before setting
+                if (Array.isArray(facesData)) {
+                    setFaceThumbnails(facesData);
+                } else {
+                    console.error('[FaceGallery] Face thumbnails API returned non-array:', facesData);
+                    setFaceThumbnails([]);
+                }
             }
 
-            // Fetch liked status for current user (optimized batch fetch)
+            // Fetch liked status for current user (optimized batch fetch, event-scoped)
             const userId = getUserId();
-            if (userId && photoLikesEnabled) {
+            if (userId && photoLikesEnabled && eventId) {
                 try {
                     // Batch fetch all liked photos in ONE API call instead of N calls
-                    const likeRes = await fetch(`/api/photos/likes/batch?userId=${userId}`);
+                    const likeRes = await fetch(`/api/photos/likes/batch?userId=${userId}&eventId=${eventId}`);
                     const likeData = await likeRes.json();
 
                     if (likeData.likedPhotoIds && Array.isArray(likeData.likedPhotoIds)) {
@@ -101,7 +108,10 @@ export default function AlbumGallery() {
         setLoadingMore(true);
         try {
             const nextPage = currentPage + 1;
-            const res = await fetch(`/api/photos?page=${nextPage}&limit=20`);
+            const endpoint = eventId
+                ? `/api/events/${eventId}/photos?page=${nextPage}&limit=20`
+                : `/api/photos?page=${nextPage}&limit=20`;
+            const res = await fetch(endpoint);
             const data = await res.json();
             const newPhotos = data.photos || [];
 
@@ -117,14 +127,14 @@ export default function AlbumGallery() {
             });
             setLikeCounts(prev => ({ ...prev, ...counts }));
 
-            // Fetch liked status for new photos
+            // Fetch liked status for new photos (event-scoped)
             const userId = getUserId();
-            if (userId) {
+            if (userId && eventId) {
                 const newLikedSet = new Set(likedPhotos);
                 await Promise.all(
                     newPhotos.map(async (photo) => {
                         try {
-                            const likeRes = await fetch(`/api/photos/${photo.id}/like?userId=${userId}`);
+                            const likeRes = await fetch(`/api/photos/${photo.id}/like?userId=${userId}&eventId=${eventId}`);
                             const likeData = await likeRes.json();
                             if (likeData.liked) {
                                 newLikedSet.add(photo.id);
@@ -278,11 +288,16 @@ export default function AlbumGallery() {
             return;
         }
 
+        if (!eventId) {
+            console.error('[FaceGallery] No event ID available');
+            return;
+        }
+
         try {
             const res = await fetch(`/api/photos/${photoId}/like`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId })
+                body: JSON.stringify({ userId, eventId }) // Include eventId for multi-tenancy
             });
 
             if (!res.ok) {
@@ -473,7 +488,8 @@ export default function AlbumGallery() {
                     </div>
                 </div>
 
-                {events?.length > 0 && (
+                {/* Hide event filter when viewing event-specific gallery */}
+                {!eventId && events?.length > 0 && (
                     <div className="filter-group">
                         <span className="filter-label">Filter by Event</span>
                         <div className="filter-chips">

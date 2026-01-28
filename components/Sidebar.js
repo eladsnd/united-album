@@ -4,7 +4,7 @@ import { Camera, Image, Smartphone, Upload, Settings } from 'lucide-react';
 import Leaderboard from './Leaderboard';
 import { useFeatureFlags } from '@/lib/hooks/useFeatureFlag';
 
-export default function Sidebar({ activeSection, setActiveSection }) {
+export default function Sidebar({ activeSection, setActiveSection, eventSlug = null, eventName = null, eventDescription = null }) {
     const { flags, loading } = useFeatureFlags();
 
     // All possible menu items with their feature flag requirements
@@ -31,8 +31,9 @@ export default function Sidebar({ activeSection, setActiveSection }) {
     return (
         <aside className="sidebar">
             <div className="sidebar-header">
-                <h1 className="logo">UNITED ALBUM</h1>
-                <p className="tagline">Wedding Memories</p>
+                <h1 className="logo">{eventName || 'UNITED ALBUM'}</h1>
+                {eventDescription && <p className="tagline">{eventDescription}</p>}
+                {!eventDescription && !eventName && <p className="tagline">Wedding Memories</p>}
             </div>
 
             <nav className="sidebar-nav">
@@ -53,7 +54,7 @@ export default function Sidebar({ activeSection, setActiveSection }) {
             </div>
 
             <div className="sidebar-footer">
-                <Link href="/admin" className="admin-link">
+                <Link href={eventSlug ? `/${eventSlug}/admin` : "/admin"} className="admin-link">
                     <Settings size={14} />
                     <span>Admin</span>
                 </Link>

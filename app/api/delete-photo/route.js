@@ -28,10 +28,11 @@ async function handleDeletePhoto(request) {
   const { searchParams } = new URL(request.url);
   const photoId = parseInt(searchParams.get('photoId'));
   const uploaderId = searchParams.get('uploaderId');
+  const eventId = searchParams.get('eventId'); // CRITICAL: Required for multi-tenancy
   const isAdmin = isAdminAuthenticated(request);
 
   const photoService = new PhotoService();
-  const result = await photoService.deletePhoto(photoId, uploaderId, isAdmin);
+  const result = await photoService.deletePhoto(photoId, uploaderId, isAdmin, eventId);
 
   return NextResponse.json(result);
 }

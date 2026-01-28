@@ -3,6 +3,7 @@ import { getPhotoStream, getProviderName } from '../../../../lib/storage/operati
 import { PhotoRepository } from '../../../../lib/repositories/PhotoRepository.js';
 import { applyRateLimit } from '../../../../lib/middleware/rateLimit';
 import { downloadDriveFile } from '../../../../lib/utils/streamUtils';
+import { ValidationError } from '../../../../lib/api/errors';
 
 export async function GET(request, { params }) {
     // Rate limit downloads to prevent API quota exhaustion
@@ -13,16 +14,38 @@ export async function GET(request, { params }) {
     }
 
     const { driveId } = await params;
-    console.log('[Download API] Starting download for driveId:', driveId);
+    const { searchParams } = new URL(request.url);
+    const eventId = searchParams.get('eventId');
+
+    console.log('[Download API] Starting download for driveId:', driveId, 'event:', eventId);
 
     try {
+        // CRITICAL: Require eventId for multi-tenancy isolation
+        if (!eventId) {
+            throw new ValidationError('eventId is required for data isolation');
+        }
+
         // Get photo metadata for better filename
         const photoRepo = new PhotoRepository();
-        const photos = await photoRepo.findAll();
-        console.log('[Download API] Total photos in storage:', photos.length);
 
-        const photo = photos.find(p => p.driveId === driveId);
-        console.log('[Download API] Found photo metadata:', photo ? 'YES' : 'NO', photo);
+        // CRITICAL: Get only photos for this event
+        const eventPhotos = await photoRepo.findMany({
+            where: { eventId }, // CRITICAL: Filter by eventId to prevent data leaks
+        });
+
+        console.log('[Download API] Total photos in event', eventId, ':', eventPhotos.length);
+
+        const photo = eventPhotos.find(p => p.driveId === driveId);
+        console.log('[Download API] Found photo in event:', photo ? 'YES' : 'NO');
+
+        // CRITICAL: Security check - verify photo belongs to this event
+        if (!photo) {
+            console.warn(`[Download API] Attempted to download photo ${driveId} not in event ${eventId}`);
+            return NextResponse.json(
+                { error: 'Photo not found in this event' },
+                { status: 403 }
+            );
+        }
 
         // Generate clean filename
         let filename = 'photo.jpg';
@@ -89,6 +112,15 @@ export async function GET(request, { params }) {
     } catch (error) {
         console.error('[Download API] Error:', error);
         console.error('[Download API] Error stack:', error.stack);
+
+        // Re-throw ValidationError (like missing eventId) without fallback
+        if (error instanceof ValidationError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
         return NextResponse.json(
             { error: 'Failed to download photo', details: error.message },
             { status: 500 }

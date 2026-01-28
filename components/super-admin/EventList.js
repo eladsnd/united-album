@@ -219,18 +219,44 @@ export default function EventList() {
                   </div>
                 </div>
 
+                {/* Event Links */}
+                <div className="grid grid-cols-2 gap-2 mb-3">
+                  <a
+                    href={`/${event.slug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center px-3 py-2 bg-gradient-to-r from-indigo-50 to-purple-50 text-indigo-700 rounded-lg hover:from-indigo-100 hover:to-purple-100 text-sm font-medium transition-all border border-indigo-100"
+                  >
+                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    View Site
+                  </a>
+                  <a
+                    href={`/${event.slug}/admin`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center px-3 py-2 bg-gradient-to-r from-purple-50 to-pink-50 text-purple-700 rounded-lg hover:from-purple-100 hover:to-pink-100 text-sm font-medium transition-all border border-purple-100"
+                  >
+                    <svg className="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Admin Panel
+                  </a>
+                </div>
+
                 {/* Actions */}
                 <div className="flex space-x-2">
                   <button
                     onClick={() => handleEdit(event)}
-                    className="flex-1 px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 text-sm font-medium"
+                    className="flex-1 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium transition-colors"
                   >
                     Edit
                   </button>
                   {!event.isArchived && (
                     <button
                       onClick={() => handleArchive(event.id, event.name)}
-                      className="flex-1 px-3 py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 text-sm font-medium"
+                      className="flex-1 px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 text-sm font-medium transition-colors"
                     >
                       Archive
                     </button>

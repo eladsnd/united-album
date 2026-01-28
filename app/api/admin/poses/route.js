@@ -17,14 +17,18 @@ import { withApi } from '@/lib/api/decorators';
 import { ChallengeService } from '@/lib/services/ChallengeService';
 
 /**
- * GET - List all poses
+ * GET - List all poses (event-scoped)
  *
  * No authentication required (public data)
+ * Returns global challenges + event-specific challenges for the given event
  * Transforms Drive IDs to proxy URLs for client consumption
  */
 async function handleGetPoses(request) {
+  const { searchParams } = new URL(request.url);
+  const eventId = searchParams.get('eventId'); // Optional - filters challenges for event
+
   const challengeService = new ChallengeService();
-  const challenges = await challengeService.getAllPoses();
+  const challenges = await challengeService.getAllPoses(eventId);
 
   // Transform image paths: only wrap Drive IDs, not full URLs
   const transformedChallenges = challenges.map(challenge => ({

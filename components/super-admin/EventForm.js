@@ -24,6 +24,12 @@ export default function EventForm({ event, onClose }) {
     isActive: true,
   });
 
+  const [adminData, setAdminData] = useState({
+    email: '',
+    password: '',
+    name: '',
+  });
+
   const [features, setFeatures] = useState({
     gamification: false,
     challenges: false,
@@ -89,8 +95,9 @@ export default function EventForm({ event, onClose }) {
       };
 
       if (!isEditing) {
-        // Create new event
+        // Create new event with admin user
         payload.features = features;
+        payload.admin = adminData;
 
         const res = await fetch('/api/super-admin/events', {
           method: 'POST',
@@ -106,7 +113,8 @@ export default function EventForm({ event, onClose }) {
           throw new Error(data.error || `HTTP ${res.status}`);
         }
 
-        alert('Event created successfully!');
+        const result = await res.json();
+        alert(`Event created successfully!\n\nEvent URL: /${result.event.slug}\nAdmin URL: /${result.event.slug}/admin`);
       } else {
         // Update existing event
         const res = await fetch(`/api/super-admin/events/${event.id}`, {
@@ -248,12 +256,20 @@ export default function EventForm({ event, onClose }) {
                   className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm hover:border-gray-300 font-mono text-sm"
                   placeholder="sarah-john-wedding"
                 />
-                <p className="text-xs text-gray-500 mt-2 flex items-center">
-                  <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  URL: /events/{formData.slug || 'event-slug'}
-                </p>
+                <div className="text-xs text-gray-500 mt-2 space-y-1">
+                  <div className="flex items-center">
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium">Guest URL:</span> <span className="font-mono ml-1">/{formData.slug || 'event-slug'}</span>
+                  </div>
+                  <div className="flex items-center">
+                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <span className="font-medium">Admin URL:</span> <span className="font-mono ml-1">/{formData.slug || 'event-slug'}/admin</span>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -364,6 +380,74 @@ export default function EventForm({ event, onClose }) {
               )}
             </div>
           </div>
+
+          {/* Event Admin Section (only for new events) */}
+          {!isEditing && (
+            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-100">
+              <div className="flex items-center space-x-2 mb-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
+                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <h3 className="text-base font-semibold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Event Admin</h3>
+              </div>
+              <p className="text-sm text-gray-600 mb-4">Create an admin user who will manage this event</p>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <svg className="w-4 h-4 mr-1.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                    </svg>
+                    Admin Email *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={adminData.email}
+                    onChange={(e) => setAdminData(prev => ({ ...prev, email: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-sm hover:border-gray-300"
+                    placeholder="admin@example.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <svg className="w-4 h-4 mr-1.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    Admin Password *
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={adminData.password}
+                    onChange={(e) => setAdminData(prev => ({ ...prev, password: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-sm hover:border-gray-300"
+                    placeholder="Minimum 8 characters"
+                    minLength="8"
+                  />
+                  <p className="text-xs text-gray-500 mt-1.5">Minimum 8 characters</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2 flex items-center">
+                    <svg className="w-4 h-4 mr-1.5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Admin Name
+                  </label>
+                  <input
+                    type="text"
+                    value={adminData.name}
+                    onChange={(e) => setAdminData(prev => ({ ...prev, name: e.target.value }))}
+                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all shadow-sm hover:border-gray-300"
+                    placeholder="John Smith (optional)"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Feature Flags Section */}
           <div className="bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl p-5 border border-indigo-100">

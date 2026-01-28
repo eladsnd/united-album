@@ -6,7 +6,7 @@ import { useFeatureFlag } from '../lib/hooks/useFeatureFlag';
 const CHUNK_SIZE = 5; // Upload 5 files at a time
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB max per file
 
-export default function BulkUpload() {
+export default function BulkUpload({ eventId = null }) {
     const [selectedFiles, setSelectedFiles] = useState([]);
     const [uploading, setUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState({});
@@ -97,6 +97,7 @@ export default function BulkUpload() {
                     localStorage.setItem('uploaderId', uploaderId);
                 }
                 formData.append('uploaderId', uploaderId);
+                if (eventId) formData.append('eventId', eventId); // Multi-tenancy: Associate photo with event
 
                 const response = await fetch('/api/upload', {
                     method: 'POST',

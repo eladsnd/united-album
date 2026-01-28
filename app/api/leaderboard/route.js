@@ -15,22 +15,24 @@
 import { NextResponse } from 'next/server';
 import { withApi } from '@/lib/api/decorators';
 import { withFeature } from '@/lib/api/featureDecorators';
+import { ValidationError } from '@/lib/api/errors';
 import { GamificationService } from '@/lib/services/GamificationService';
 
 /**
- * GET /api/leaderboard
+ * GET /api/leaderboard?eventId={eventId}
  *
- * Get current leaderboard (top 10 users)
+ * Get current leaderboard for specific event (top 10 users)
  * Returns empty array if gamify mode is disabled
  *
  * Query params:
+ * - eventId: Event ID (required for multi-tenancy)
  * - limit: Number of top users to return (default: 10, max: 50)
  *
  * Response:
  * {
  *   success: true,
  *   data: {
- *     gamifyMode: true,
+ *     eventId: "event-123",
  *     leaderboard: [
  *       {
  *         rank: 1,
@@ -46,11 +48,16 @@ import { GamificationService } from '@/lib/services/GamificationService';
  * }
  */
 async function handleGet(request) {
-  const gamificationService = new GamificationService();
-
-  // Get query params
   const { searchParams } = new URL(request.url);
+  const eventId = searchParams.get('eventId');
   const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50);
+
+  // CRITICAL: Require eventId for multi-tenancy isolation
+  if (!eventId) {
+    throw new ValidationError('eventId is required for data isolation');
+  }
+
+  const gamificationService = new GamificationService(eventId);
 
   // Get leaderboard (feature gate handled by decorator)
   const leaderboard = await gamificationService.getLeaderboard(limit);
@@ -58,6 +65,7 @@ async function handleGet(request) {
   return NextResponse.json({
     success: true,
     data: {
+      eventId,
       leaderboard,
     },
   });

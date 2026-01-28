@@ -1,14 +1,16 @@
 "use client";
 import { useEffect, useState, useCallback } from 'react';
 import { detectFaceInBrowser } from '../utils/clientFaceDetection';
+import { useEventContext } from '../lib/hooks/useEventContext';
 
 /**
- * Background Face Processor
+ * Background Face Processor (Event-Scoped)
  *
- * Invisible component that processes photos needing face detection.
+ * Invisible component that processes photos needing face detection FOR CURRENT EVENT.
  * Runs in the background without blocking the UI.
  *
  * Features:
+ * - Event-scoped processing
  * - Event-driven: Triggered immediately when bulk upload completes
  * - Fallback: Checks for pending photos every 2 minutes (catches edge cases)
  * - Processes photos one at a time to avoid overwhelming the client
@@ -24,33 +26,41 @@ export default function BackgroundFaceProcessor() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [pendingCount, setPendingCount] = useState(0);
 
+    // Get current event ID
+    const { currentEventId } = useEventContext();
+
     const processPendingPhotos = useCallback(async () => {
         if (isProcessing) {
             console.log('[BgFaceProcessor] Already processing, skipping...');
             return;
         }
 
+        if (!currentEventId) {
+            console.log('[BgFaceProcessor] No event context, skipping...');
+            return;
+        }
+
         try {
             setIsProcessing(true);
 
-            // Check for photos needing processing
-            const checkRes = await fetch('/api/process-faces');
+            // Check for photos needing processing (event-scoped)
+            const checkRes = await fetch(`/api/process-faces?eventId=${currentEventId}`);
             const checkData = await checkRes.json();
 
             setPendingCount(checkData.pendingCount || 0);
 
             if (checkData.pendingCount === 0) {
-                console.log('[BgFaceProcessor] No photos need processing');
+                console.log(`[BgFaceProcessor] No photos need processing in event ${currentEventId}`);
                 return;
             }
 
-            console.log(`[BgFaceProcessor] Found ${checkData.pendingCount} photos needing face detection`);
+            console.log(`[BgFaceProcessor] Found ${checkData.pendingCount} photos needing face detection in event ${currentEventId}`);
 
-            // Get list of photos to process
+            // Get list of photos to process (event-scoped)
             const processRes = await fetch('/api/process-faces', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({})
+                body: JSON.stringify({ eventId: currentEventId }) // Include eventId for multi-tenancy
             });
 
             const processData = await processRes.json();
@@ -72,8 +82,8 @@ export default function BackgroundFaceProcessor() {
                     // Convert blob to File object (required by detectFaceInBrowser)
                     const file = new File([blob], `photo_${photo.id}.jpg`, { type: blob.type });
 
-                    // Detect faces using the same function as regular uploads
-                    const faceResults = await detectFaceInBrowser(file);
+                    // Detect faces using the same function as regular uploads (event-scoped)
+                    const faceResults = await detectFaceInBrowser(file, currentEventId);
 
                     console.log(`[BgFaceProcessor] Detected ${faceResults?.faceIds?.length || 0} faces in photo ${photo.id}`);
 
@@ -86,6 +96,7 @@ export default function BackgroundFaceProcessor() {
                     // Update photo metadata with face data and thumbnails
                     const updateFormData = new FormData();
                     updateFormData.append('photoId', photo.id.toString());
+                    updateFormData.append('eventId', currentEventId); // Include eventId for multi-tenancy
                     updateFormData.append('faceIds', faceIds.join(','));
                     updateFormData.append('mainFaceId', mainFaceId);
                     updateFormData.append('faceBoxes', JSON.stringify(faceBoxes));
@@ -127,7 +138,7 @@ export default function BackgroundFaceProcessor() {
         } finally {
             setIsProcessing(false);
         }
-    }, [isProcessing]);
+    }, [isProcessing, currentEventId]); // Include currentEventId in dependencies
 
     // Listen for custom events triggered by bulk upload
     useEffect(() => {

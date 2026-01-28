@@ -1,14 +1,62 @@
 import { NextResponse } from 'next/server';
 import { FaceRepository } from '../../../lib/repositories/FaceRepository.js';
+import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
+import { ValidationError } from '../../../lib/api/errors';
 
-// GET /api/faces - Retrieve all known face descriptors
-export async function GET() {
+// GET /api/faces - Retrieve face descriptors for current event
+export async function GET(request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const eventId = searchParams.get('eventId');
+
+        // CRITICAL: Require eventId for multi-tenancy isolation
+        if (!eventId) {
+            throw new ValidationError('eventId is required for data isolation');
+        }
+
         const faceRepo = new FaceRepository();
-        const faces = await faceRepo.findAll();
-        return NextResponse.json(faces);
+        const photoRepo = new PhotoRepository();
+
+        // Get all photos for this event FIRST
+        const eventPhotos = await photoRepo.findMany({
+            where: { eventId }, // CRITICAL: Filter by eventId
+        });
+
+        // Extract all face IDs that appear in this event's photos
+        const eventFaceIds = new Set();
+        eventPhotos.forEach(photo => {
+            if (photo.mainFaceId && photo.mainFaceId !== 'unknown') {
+                eventFaceIds.add(photo.mainFaceId);
+            }
+            if (photo.faceIds && Array.isArray(photo.faceIds)) {
+                photo.faceIds.forEach(faceId => {
+                    if (faceId && faceId !== 'unknown') {
+                        eventFaceIds.add(faceId);
+                    }
+                });
+            }
+        });
+
+        // Get all faces from database
+        const allFaces = await faceRepo.findAll();
+
+        // CRITICAL: Filter to only faces that appear in this event
+        const eventFaces = allFaces.filter(face => eventFaceIds.has(face.faceId));
+
+        console.log(`[Faces API] Returning ${eventFaces.length} faces for event ${eventId} (filtered from ${allFaces.length} total)`);
+
+        return NextResponse.json(eventFaces);
     } catch (error) {
         console.error('[Faces API] Error fetching faces:', error);
+
+        // Re-throw ValidationError (like missing eventId) without fallback
+        if (error instanceof ValidationError) {
+            return NextResponse.json(
+                { error: error.message },
+                { status: 400 }
+            );
+        }
+
         return NextResponse.json({ error: 'Failed to fetch faces' }, { status: 500 });
     }
 }
@@ -26,10 +74,11 @@ export async function POST(request) {
             );
         }
 
-        // SECURITY: Only allow person_N format (prevent XSS injection)
-        if (!/^person_\d+$/.test(faceId)) {
+        // SECURITY: Only allow person_N or {eventId}_person_N format (prevent XSS injection)
+        // Allowed formats: "person_1", "person_2", "event-abc_person_1", "event-xyz_person_2"
+        if (!/^([a-zA-Z0-9-_]+_)?person_\d+$/.test(faceId)) {
             return NextResponse.json(
-                { error: 'Invalid faceId format. Expected: person_N (e.g., person_1, person_2)' },
+                { error: 'Invalid faceId format. Expected: person_N or {eventId}_person_N' },
                 { status: 400 }
             );
         }
