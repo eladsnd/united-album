@@ -15,7 +15,7 @@ jest.mock('../../../lib/prisma.js', () => ({
 
 import { UploadService } from '../../../lib/services/UploadService';
 import { ValidationError, InternalServerError } from '../../../lib/api/errors';
-import { uploadToDrive } from '../../../lib/googleDrive';
+import { uploadToDrive } from '../../../lib/storage/googleDrive';
 
 // Mock Google Drive operations
 jest.mock('../../../lib/googleDrive', () => ({

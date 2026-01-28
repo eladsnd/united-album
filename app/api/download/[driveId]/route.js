@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getFileStream } from '../../../../lib/googleDrive';
+import { getFileStream } from '../../../../lib/storage/googleDrive';
 import { PhotoRepository } from '../../../../lib/repositories/PhotoRepository.js';
-import { applyRateLimit } from '../../../../lib/rateLimit';
-import { downloadDriveFile } from '../../../../lib/streamUtils';
+import { applyRateLimit } from '../../../../lib/middleware/rateLimit';
+import { downloadDriveFile } from '../../../../lib/utils/streamUtils';
 import { getProviderName } from '../../../../lib/storage/operations';
 
 export async function GET(request, { params }) {

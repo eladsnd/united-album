@@ -13,7 +13,7 @@ import {
   generateAdminToken,
   getTokenExpiryMs,
 } from '@/lib/adminAuth';
-import { applyRateLimit } from '@/lib/rateLimit';
+import { applyRateLimit } from '@/lib/middleware/rateLimit';
 
 /**
  * POST /api/admin/auth

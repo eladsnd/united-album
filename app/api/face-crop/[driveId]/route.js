@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getFileStream } from '../../../../lib/googleDrive';
+import { getFileStream } from '../../../../lib/storage/googleDrive';
 import sharp from 'sharp';
 
 // GET /api/face-crop/[driveId] - Serve cropped face image

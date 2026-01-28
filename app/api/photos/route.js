@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listDriveFiles } from '../../../lib/googleDrive';
+import { listDriveFiles } from '../../../lib/storage/googleDrive';
 import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
 
 export async function GET(request) {

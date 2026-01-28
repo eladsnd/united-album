@@ -12,7 +12,7 @@ import {
   withAdminAuth,
   withApi,
 } from '../../../lib/api/decorators';
-import { applyRateLimit } from '../../../lib/rateLimit';
+import { applyRateLimit } from '../../../lib/middleware/rateLimit';
 import { isAdminAuthenticated } from '../../../lib/adminAuth';
 
 // Mock dependencies

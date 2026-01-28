@@ -1,4 +1,4 @@
-import { getFileStream } from '../../../../lib/googleDrive';
+import { getFileStream } from '../../../../lib/storage/googleDrive';
 import { NextResponse } from 'next/server';
 
 /**

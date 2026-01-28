@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
-import { getFileStream } from '../../../lib/googleDrive';
+import { getFileStream } from '../../../lib/storage/googleDrive';
 import JSZip from 'jszip';
-import { applyRateLimit } from '../../../lib/rateLimit';
-import { downloadDriveFile } from '../../../lib/streamUtils';
+import { applyRateLimit } from '../../../lib/middleware/rateLimit';
+import { downloadDriveFile } from '../../../lib/utils/streamUtils';
 
 export async function POST(request) {
     try {
