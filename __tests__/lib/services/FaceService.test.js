@@ -14,10 +14,10 @@ jest.mock('../../../lib/prisma.js', () => ({
 }));
 
 import { FaceService } from '../../../lib/services/FaceService.js';
-import { uploadToDrive, findOrCreateFolder } from '../../../lib/googleDrive.js';
+import { uploadToDrive, findOrCreateFolder } from '../../../lib/storage/googleDrive.js';
 
 // Mock Google Drive operations
-jest.mock('../../../lib/googleDrive.js', () => ({
+jest.mock('../../../lib/storage/googleDrive.js', () => ({
   uploadToDrive: jest.fn(),
   findOrCreateFolder: jest.fn(),
 }));

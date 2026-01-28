@@ -14,14 +14,14 @@ jest.mock('../../../lib/prisma.js', () => ({
 }));
 
 // Mock Google Drive operations
-jest.mock('../../../lib/googleDrive.js', () => ({
+jest.mock('../../../lib/storage/googleDrive.js', () => ({
   uploadToDrive: jest.fn(),
   findOrCreateFolder: jest.fn(),
 }));
 
 import { ChallengeService } from '../../../lib/services/ChallengeService.js';
 import { ValidationError, NotFoundError, ConflictError } from '../../../lib/api/errors.js';
-import { uploadToDrive, findOrCreateFolder } from '../../../lib/googleDrive.js';
+import { uploadToDrive, findOrCreateFolder } from '../../../lib/storage/googleDrive.js';
 
 describe('ChallengeService', () => {
   let challengeService;

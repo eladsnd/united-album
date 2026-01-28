@@ -14,10 +14,10 @@ jest.mock('../../../lib/prisma.js', () => ({
 }));
 
 import { PhotoService } from '../../../lib/services/PhotoService.js';
-import { deleteFromDrive } from '../../../lib/googleDrive.js';
+import { deleteFromDrive } from '../../../lib/storage/googleDrive.js';
 
 // Mock Google Drive operations
-jest.mock('../../../lib/googleDrive.js', () => ({
+jest.mock('../../../lib/storage/googleDrive.js', () => ({
   deleteFromDrive: jest.fn(),
   findOrCreateFolder: jest.fn(),
 }));
