@@ -13,6 +13,47 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// Multi-Tenancy: User Roles
+enum UserRole {
+  SUPER_ADMIN  // Can create events, manage all admins
+  EVENT_ADMIN  // Can manage assigned event
+  GUEST        // Can view/upload photos
+}
+
+// Multi-Tenancy: User Model
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String   // bcrypt hash
+  role          UserRole @default(GUEST)
+  name          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  adminOfEvents EventAdmin[]  // Events this user administers
+  photos        Photo[]       // Photos uploaded by this user
+
+  @@index([email])
+  @@index([role])
+}
+
+// Multi-Tenancy: EventAdmin Join Table
+model EventAdmin {
+  id        String   @id @default(cuid())
+  userId    String
+  eventId   String
+  role      String   @default("admin")  // "admin", "moderator" (future-proof)
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, eventId])  // User can be admin of event only once
+  @@index([userId])
+  @@index([eventId])
+}
+
 model Photo {
   id          Int       @id @default(autoincrement())
   name        String
@@ -22,17 +63,18 @@ model Photo {
   faceIds     String    @default("[]")  // JSON array stored as string for SQLite compatibility
   faceBoxes   String    @default("[]")  // JSON array stored as string for SQLite compatibility
   poseId      String    @default("unknown_pose")
-  uploaderId  String?
+  uploaderId  String?   // Link to User who uploaded
   likeCount   Int       @default(0)
   timestamp   DateTime  @default(now())
   capturedAt  DateTime?              // EXIF original capture time
   deviceMake  String?                // Camera/phone manufacturer
   deviceModel String?                // Camera/phone model
-  eventId     String?                // Foreign key to Event
+  eventId     String    @default("default-event")  // REQUIRED for multi-tenancy
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   likes       PhotoLike[]
-  event       Event?    @relation(fields: [eventId], references: [id])
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  uploader    User?     @relation(fields: [uploaderId], references: [id])
 
   @@index([driveId])
   @@index([mainFaceId])
@@ -72,9 +114,18 @@ model Challenge {
   startTime   DateTime? // Challenge becomes active at this time (null = always active)
   endTime     DateTime? // Challenge expires at this time (null = never expires)
   bonusPoints Int       @default(0)      // Extra points during active window
+
+  // Multi-Tenancy (optional)
+  eventId     String?   // If null, global challenge. If set, event-specific.
+  isGlobal    Boolean   @default(true)  // Global challenges available to all events
+
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  event       Event?    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+  @@index([isGlobal])
   @@index([title])
   @@index([order])
   @@index([startTime])
@@ -95,33 +146,78 @@ model PhotoLike {
 
 model Event {
   id          String   @id @default(cuid())
-  name        String
+  name        String   // "Sarah & John's Wedding", "Tech Corp Holiday Party"
+  slug        String   @unique  // "sarah-john-wedding-2026"
   description String?
+  eventType   String   @default("wedding")  // "wedding", "party", "corporate", "other"
+
+  // Time window
   startTime   DateTime
   endTime     DateTime
+
+  // Branding
   color       String   @default("#3B82F6")  // Hex color for UI
+  coverImage  String?  // Optional cover photo
+
+  // Status
+  isActive    Boolean  @default(true)
+  isArchived  Boolean  @default(false)
+
+  // Metadata
   order       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  photos      Photo[]
 
+  // Relations
+  photos        Photo[]
+  admins        EventAdmin[]
+  settings      EventSettings?  // Per-event feature flags
+  challenges    Challenge[]     // Per-event challenges
+
+  @@index([slug])
+  @@index([isActive])
   @@index([startTime])
+  @@index([eventType])
   @@index([order])
 }
 
-model AppSettings {
-  id               String   @id @default("app_settings")  // Singleton pattern
+// Multi-Tenancy: Per-Event Settings (replaces global AppSettings for features)
+model EventSettings {
+  id               String   @id @default(cuid())
+  eventId          String   @unique
 
-  // Feature Flags (all default false for opt-in)
+  // Feature Flags (per-event)
   gamification     Boolean  @default(false)  // Points, leaderboard, challenges
-  events           Boolean  @default(false)  // Event timeline and management
+  events           Boolean  @default(false)  // Show event timeline
   faceDetection    Boolean  @default(false)  // Face recognition and filtering
   photoLikes       Boolean  @default(false)  // Like/unlike photos
   bulkUpload       Boolean  @default(false)  // Regular photo uploads
   challenges       Boolean  @default(false)  // Pose challenges
 
+  // Additional Settings
+  allowGuestUploads Boolean @default(true)
+  requireModeration Boolean @default(false)
+  maxPhotosPerUser  Int?    // Optional upload limit
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+
+  event            Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
+}
+
+// Global AppSettings (keep for super admin settings)
+model AppSettings {
+  id                      String   @id @default("app_settings")  // Singleton pattern
+
+  // Super admin settings
+  allowSelfRegistration   Boolean  @default(false)  // Can users create accounts?
+  requireEmailVerification Boolean @default(false)
+  maintenanceMode         Boolean  @default(false)
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
 }
 
 model UserScore {
