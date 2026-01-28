@@ -71,16 +71,25 @@ export default function FeatureFlagPanel({ adminToken }) {
 
   const fetchFlags = async () => {
     try {
+      console.log('[FeatureFlags] Fetching flags with token:', adminToken ? 'Present' : 'Missing');
+
       const res = await fetch('/api/admin/settings', {
         headers: { Authorization: `Bearer ${adminToken}` },
       });
+
+      console.log('[FeatureFlags] Fetch response status:', res.status);
       const data = await res.json();
+      console.log('[FeatureFlags] Fetch response data:', data);
 
       if (data.success) {
         setFlags(data.data);
+        console.log('[FeatureFlags] Flags loaded successfully:', data.data);
+      } else {
+        console.error('[FeatureFlags] Fetch failed:', data.error || data.message);
       }
     } catch (err) {
-      console.error('Error fetching feature flags:', err);
+      console.error('[FeatureFlags] Error fetching feature flags:', err);
+      alert(`Failed to load feature flags: ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -90,6 +99,9 @@ export default function FeatureFlagPanel({ adminToken }) {
     setSaving(featureId);
 
     try {
+      console.log('[FeatureFlags] Toggling feature:', featureId, 'to', !flags[featureId]);
+      console.log('[FeatureFlags] Using token:', adminToken ? 'Present' : 'Missing');
+
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
         headers: {
@@ -101,13 +113,20 @@ export default function FeatureFlagPanel({ adminToken }) {
         }),
       });
 
+      console.log('[FeatureFlags] Response status:', res.status);
       const data = await res.json();
+      console.log('[FeatureFlags] Response data:', data);
 
       if (data.success) {
         setFlags(data.data);
+        console.log('[FeatureFlags] Feature updated successfully');
+      } else {
+        console.error('[FeatureFlags] Update failed:', data.error || data.message);
+        alert(`Failed to update feature: ${data.error || data.message || 'Unknown error'}`);
       }
     } catch (err) {
-      console.error('Error toggling feature:', err);
+      console.error('[FeatureFlags] Error toggling feature:', err);
+      alert(`Error: ${err.message}`);
     } finally {
       setSaving(null);
     }
