@@ -33,22 +33,36 @@ async function main() {
   console.log('You only need to run this once.');
   console.log('');
 
-  // Get user input (trim to remove accidental spaces)
+  // Get user input
+  // IMPORTANT: Trim email and name, but NEVER trim passwords!
+  // Passwords can intentionally contain spaces as part of the password
   const email = (await question('Email address: ')).trim();
-  const password = (await question('Password (min 8 chars): ')).trim();
+  const password = await question('Password (min 8 chars): '); // NO TRIM - spaces are valid!
   const name = (await question('Full name (optional): ')).trim();
 
   console.log('');
 
-  // Validate input
-  if (!email || !email.includes('@')) {
-    console.error('Error: Invalid email address');
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!email || !emailRegex.test(email)) {
+    console.error('Error: Invalid email address format');
+    console.error('Example: admin@example.com');
     rl.close();
     process.exit(1);
   }
 
+  // Validate password strength
   if (!password || password.length < 8) {
     console.error('Error: Password must be at least 8 characters');
+    rl.close();
+    process.exit(1);
+  }
+
+  // Check password isn't too weak
+  if (password.toLowerCase() === 'password' ||
+      password === '12345678' ||
+      password === '00000000') {
+    console.error('Error: Password is too weak. Please use a stronger password.');
     rl.close();
     process.exit(1);
   }
