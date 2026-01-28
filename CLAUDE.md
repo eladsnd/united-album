@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-United Album is a Next.js wedding photo-sharing application with pose challenges and AI face recognition. Features modular storage (Cloudinary/Google Drive), feature flags, gamification, and client-side face detection.
+United Album is a Next.js multi-tenant photo-sharing application for events (weddings, parties, corporate events). Features include pose challenges, AI face recognition, modular storage (Cloudinary/Google Drive), per-event feature flags, gamification, and client-side face detection.
+
+**Multi-Tenancy**: The application supports multiple independent events with isolated data, separate admins, and per-event settings. Each event has its own photos, challenges, and feature configurations.
 
 ## Development Commands
 
@@ -100,11 +102,22 @@ node scripts/resetTestData.js   # Reset test data
    - Face thumbnails: `/api/face-crop/[driveId]/route.js` (120x120px crops)
    - 1-year browser cache (`Cache-Control: public, max-age=31536000, immutable`)
 
-6. **Feature Flags** (`lib/services/FeatureFlagService.js`):
-   - Database-backed toggles for features (AppSettings model)
+6. **Multi-Tenancy Architecture** (NEW):
+   - **Event Isolation**: Each event has separate photos, challenges, settings, and admins
+   - **User Roles**: SUPER_ADMIN (creates events), EVENT_ADMIN (manages assigned event), GUEST (uploads photos)
+   - **Data Scoping**: All queries filter by `eventId` to ensure data isolation
+   - **Event Model**: Stores event metadata (name, slug, dates, branding, status)
+   - **EventAdmin Join Table**: Many-to-many relationship between users and events
+   - **Per-Event Settings**: EventSettings model replaces global AppSettings for feature flags
+   - **URL Structure**: Events accessed via slug (e.g., `/events/sarah-john-wedding-2026`)
+
+7. **Feature Flags** (`lib/services/FeatureFlagService.js`):
+   - **Per-Event Feature Flags**: EventSettings model (replaces global AppSettings)
    - Available flags: challenges, gamification, events, faceDetection, photoLikes, bulkUpload
-   - Admin panel UI: `/admin` → Feature Flags tab
-   - Client-side hook: `useFeatureFlags()` from `lib/hooks/useFeatureFlag.js`
+   - Each event has independent feature toggles
+   - Admin panel UI: `/admin/events/[eventId]` → Feature Flags tab
+   - Client-side hook: `useFeatureFlags(eventId)` from `lib/hooks/useFeatureFlag.js`
+   - Global settings in AppSettings: maintenanceMode, allowSelfRegistration
    - **Use Case**: Disable challenges for photo-sharing-only events
 
 ### Key Modules
@@ -123,19 +136,23 @@ node scripts/resetTestData.js   # Reset test data
 - **`lib/middleware/downloadRateLimit.js`**: Bandwidth protection (rate limiting + batching)
 
 **Data Access Layer (Repositories)**:
-- **`lib/repositories/PhotoRepository.js`**: Photo metadata CRUD with JSON serialization for SQLite
+- **`lib/repositories/PhotoRepository.js`**: Photo metadata CRUD with JSON serialization for SQLite, event-scoped queries
 - **`lib/repositories/FaceRepository.js`**: Face descriptor storage with multi-descriptor averaging
-- **`lib/repositories/ChallengeRepository.js`**: Pose challenge CRUD operations
+- **`lib/repositories/ChallengeRepository.js`**: Pose challenge CRUD operations, supports global and event-specific challenges
+- **`lib/repositories/EventRepository.js`**: Event CRUD operations, slug-based lookups, active event queries
 - **`lib/repositories/BaseRepository.js`**: Template Method pattern for consistent CRUD
-- **`lib/repositories/AppSettingsRepository.js`**: Feature flag storage (singleton pattern)
+- **`lib/repositories/AppSettingsRepository.js`**: Global app settings (singleton pattern)
+- **`lib/repositories/UserScoreRepository.js`**: Gamification scores per user
 
 **Business Logic Layer (Services)**:
-- **`lib/services/PhotoService.js`**: Photo deletion with orphaned face cleanup
+- **`lib/services/PhotoService.js`**: Photo deletion with orphaned face cleanup, event-scoped operations
 - **`lib/services/FaceService.js`**: Face detection metadata updates and thumbnail management
 - **`lib/services/UploadService.js`**: Photo upload workflow - uses `uploadPhoto()` from storage operations
-- **`lib/services/ChallengeService.js`**: Pose challenge CRUD - uses `uploadChallengeImage()`, **stores URLs not IDs**
-- **`lib/services/FeatureFlagService.js`**: Feature flag management with caching and defensive defaults
+- **`lib/services/ChallengeService.js`**: Pose challenge CRUD - uses `uploadChallengeImage()`, **stores URLs not IDs**, handles global vs event-specific challenges
+- **`lib/services/EventService.js`**: Event management, slug generation, event activation/archival, admin assignment
+- **`lib/services/FeatureFlagService.js`**: Per-event feature flag management with caching and defensive defaults
 - **`lib/services/GamificationService.js`**: Points, leaderboard, and challenge completion tracking
+- **`lib/services/MetadataService.js`**: EXIF metadata extraction from photos (capture time, device info)
 
 **API Layer (Decorators)**:
 - **`lib/api/decorators.js`**: Composable middleware (withApi, withErrorHandler, withRateLimit, withAdminAuth)
@@ -283,70 +300,120 @@ No code changes needed! All services use the abstraction layer.
 
 ### Adding a New Feature Flag
 
-1. Add field to `AppSettings` model in `prisma/schema.prisma`
+1. Add field to `EventSettings` model in `prisma/schema.prisma` (NOT AppSettings - that's global)
 2. Update `FeatureFlagService.FEATURES` constant
-3. Update `getAllSafe()` and `_getFlags()` methods
-4. Add toggle to `components/FeatureFlagPanel.js`
-5. Use in components: `const { flags } = useFeatureFlags(); if (flags?.myFeature) { ... }`
+3. Update service methods to handle new flag
+4. Add toggle to `components/admin/FeatureFlagPanel.js`
+5. Use in components: `const { flags } = useFeatureFlags(eventId); if (flags?.myFeature) { ... }`
 6. Run `npx prisma db push` to update schema
+
+### Working with Events (Multi-Tenancy)
+
+1. **Creating an Event**:
+   ```javascript
+   import { EventService } from '@/lib/services/EventService';
+   const event = await EventService.createEvent({
+     name: 'Sarah & John Wedding',
+     eventType: 'wedding',
+     startTime: new Date('2026-06-15'),
+     endTime: new Date('2026-06-16'),
+     color: '#FF69B4'
+   }); // Auto-generates slug: "sarah-john-wedding-2026"
+   ```
+
+2. **Querying Event Data**:
+   ```javascript
+   // ALWAYS filter by eventId for event-scoped data
+   const photos = await PhotoRepository.findMany({
+     where: { eventId: event.id }
+   });
+
+   // Get global challenges + event-specific challenges
+   const challenges = await ChallengeRepository.findMany({
+     where: { OR: [{ isGlobal: true }, { eventId: event.id }] }
+   });
+   ```
+
+3. **Assigning Event Admins**:
+   ```javascript
+   await EventService.assignAdmin(eventId, userId, 'admin');
+   // Creates EventAdmin join record
+   ```
 
 ## Important Implementation Notes
 
-1. **Storage Abstraction** (CRITICAL):
+1. **Multi-Tenancy Data Isolation** (CRITICAL):
+   - **ALWAYS** filter queries by `eventId` when accessing event-scoped data
+   - **Event-scoped models**: Photo, Challenge (if not global), EventSettings
+   - **Global models**: Face, User, AppSettings, UserScore
+   - **URL routing**: Events accessed via `/events/[slug]` not `/events/[id]`
+   - **Slug format**: Auto-generated from event name (e.g., "Sarah & John Wedding" → "sarah-john-wedding-2026")
+   - **Default event**: Use `eventId: "default-event"` for legacy single-event mode
+   - **Cascade deletion**: Deleting an event cascades to photos, settings, challenges, admin assignments
+   - **User roles**: Check `user.role` before allowing event creation (SUPER_ADMIN) or event management (EVENT_ADMIN)
+   - **Admin assignment**: Use EventAdmin join table to assign users to events
+
+2. **Storage Abstraction** (CRITICAL):
    - **ALWAYS** use `lib/storage/operations.js` for file operations
    - **NEVER** import `googleDrive.js` or Cloudinary SDK directly in services
    - **Store URLs** in database (not IDs) - works with both providers
    - Provider switching via STORAGE_PROVIDER env var only
    - Cloudinary signature requires **alphabetically sorted params**
 
-2. **Image URL Storage** (CRITICAL for Provider Compatibility):
+3. **Image URL Storage** (CRITICAL for Provider Compatibility):
    - **Cloudinary**: Returns direct CDN URL (https://res.cloudinary.com/...)
    - **Google Drive**: Returns proxy URL (/api/image/{driveId})
    - **Always store `uploadResult.url`** in database, NOT `uploadResult.id`
    - This ensures images load correctly regardless of active provider
 
-3. **Feature Flags**:
+4. **Feature Flags**:
    - All feature checks should be defensive (never crash)
    - Use `useFeatureFlags()` hook in components
    - Use `FeatureFlagService.isEnabledSafe()` in server code
    - Feature flag panel at `/admin` → Feature Flags
    - Challenges can be disabled for photo-sharing-only events
 
-4. **Architecture Patterns** (Repository + Service + Decorator):
+5. **Architecture Patterns** (Repository + Service + Decorator):
    - **Repositories**: Handle all database operations
    - **Services**: Contain business logic and orchestrate workflows
    - **Decorators**: Composable middleware for cross-cutting concerns
    - **Storage Operations**: High-level API for file operations
 
-5. **Face IDs**:
+6. **Face IDs**:
    - Human-friendly numbering: `person_1`, `person_2`, `person_3` (not person_0)
    - Use `mainFaceId` for primary person filtering in gallery
    - `faceIds[]` array contains all detected faces in a photo
+   - **IMPORTANT**: Faces are shared across events (global recognition)
 
-6. **Photo Metadata & Timestamps**:
+7. **Photo Metadata & Timestamps**:
    - Database auto-generates: `id`, `createdAt`, `updatedAt`
-   - Manual fields: `driveId`, `mainFaceId`, `faceIds[]`, `faceBoxes[]`, `poseId`, `uploaderId`, `timestamp`
-   - Gallery filters by face (mainFaceId + faceIds) and pose
+   - **REQUIRED**: `eventId` (for multi-tenancy data isolation)
+   - Manual fields: `driveId`, `url`, `mainFaceId`, `faceIds[]`, `faceBoxes[]`, `poseId`, `uploaderId`, `timestamp`
+   - EXIF metadata: `capturedAt`, `deviceMake`, `deviceModel` (extracted by MetadataService)
+   - Gallery filters by event, face (mainFaceId + faceIds), and pose
 
-7. **Image Serving & Caching**:
+8. **Image Serving & Caching**:
    - Cloudinary: Direct CDN URLs with transformations (auto-quality, WebP, etc.)
    - Google Drive: Proxy through `/api/image/[id]`
    - 1-year browser cache for all images
    - Face crops: 120x120px @ 90% quality
 
-8. **Client vs Server Face Detection**:
+9. **Client vs Server Face Detection**:
    - Prefer client-side detection to avoid Node.js TextEncoder issues
    - Multi-model detection strategy: TinyFaceDetector (fast) + SSD MobileNet (accurate)
    - Face matching threshold: 0.45-0.55 Euclidean distance
 
-9. **Database Schema (Prisma)**:
-   - **Photo model**: JSON fields (faceIds, faceBoxes) for SQLite/PostgreSQL compatibility
-   - **Face model**: Rolling window of face descriptors
-   - **Challenge model**: Stores image **URLs** (not IDs!)
-   - **AppSettings model**: Feature flags (singleton pattern with id="app_settings")
+10. **Database Schema (Prisma)**:
+   - **Multi-tenancy models**: User, Event, EventAdmin, EventSettings
+   - **Photo model**: Includes `eventId` for data isolation, JSON fields (faceIds, faceBoxes) for SQLite/PostgreSQL compatibility
+   - **Face model**: Global across events, rolling window of face descriptors
+   - **Challenge model**: Supports global (`isGlobal: true`) and event-specific challenges, stores image **URLs** (not IDs!)
+   - **EventSettings model**: Per-event feature flags (replaces global AppSettings)
+   - **AppSettings model**: Global app settings (singleton pattern with id="app_settings")
+   - **UserRole enum**: SUPER_ADMIN, EVENT_ADMIN, GUEST
    - After schema changes: `npx prisma generate` then `npx prisma db push`
 
-10. **Error Messages**:
+11. **Error Messages**:
     - Use provider-agnostic messages ("Failed to upload image" NOT "Failed to upload to Google Drive")
     - Users should never see implementation details about storage provider
 
