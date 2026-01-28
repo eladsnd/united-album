@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getFileStream } from '../../../../lib/storage/googleDrive';
+import { getPhotoStream, getProviderName } from '../../../../lib/storage/operations';
 import { PhotoRepository } from '../../../../lib/repositories/PhotoRepository.js';
 import { applyRateLimit } from '../../../../lib/middleware/rateLimit';
 import { downloadDriveFile } from '../../../../lib/utils/streamUtils';
-import { getProviderName } from '../../../../lib/storage/operations';
 
 export async function GET(request, { params }) {
     // Rate limit downloads to prevent API quota exhaustion
@@ -66,10 +65,10 @@ export async function GET(request, { params }) {
             return NextResponse.redirect(downloadUrl);
         } else {
             // Google Drive: Proxy download through our API
-            console.log('[Download API] Requesting file from Google Drive...');
+            console.log('[Download API] Requesting file from storage...');
 
-            // Use centralized stream utility (DRY principle)
-            const buffer = await downloadDriveFile(getFileStream, driveId);
+            // Use centralized stream utility (provider-agnostic)
+            const buffer = await downloadDriveFile(getPhotoStream, driveId);
 
             console.log('[Download API] File downloaded, size:', buffer.length);
 

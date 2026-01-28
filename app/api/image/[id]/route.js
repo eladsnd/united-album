@@ -1,15 +1,19 @@
-import { getFileStream } from '../../../../lib/storage/googleDrive';
+import { getPhotoStream, isGoogleDrive } from '../../../../lib/storage/operations';
 import { NextResponse } from 'next/server';
 
 /**
  * GET /api/image/[id]
- * Proxy endpoint for Google Drive images with fallback placeholder
+ * Provider-agnostic image proxy endpoint with fallback placeholder
+ *
+ * - Google Drive: Streams file through proxy
+ * - Cloudinary: Should use direct URLs (this is fallback only)
  */
 export async function GET(request, { params }) {
     const { id } = await params;
 
     try {
-        const { stream, contentType } = await getFileStream(id);
+        // Get file stream from current storage provider
+        const { stream, contentType } = await getPhotoStream(id);
 
         return new Response(stream, {
             headers: {
@@ -18,7 +22,7 @@ export async function GET(request, { params }) {
             },
         });
     } catch (error) {
-        console.warn(`[Image Proxy] File not found in Drive (${id}):`, error.message);
+        console.warn(`[Image Proxy] File not found (${id}):`, error.message);
 
         // Return a placeholder SVG instead of 404
         const placeholderSvg = `

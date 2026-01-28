@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listDriveFiles } from '../../../lib/storage/googleDrive';
+import { listFiles, isGoogleDrive } from '../../../lib/storage/operations';
 import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
 
 export async function GET(request) {
@@ -24,49 +24,58 @@ export async function GET(request) {
             take: limit,
         });
 
-        // 1. Get all valid file IDs from Drive
-        // Since we use the 'drive.file' scope, this will only return files created by our app.
-        // We can list globally or by folder. Let's list globally to catch everything this app uploaded.
-        const validDriveIds = await listDriveFiles();
+        // Sync with storage provider (provider-agnostic)
+        let syncedPhotos = localPhotos;
 
-        // 2. Filter and Update URLs
-        const filteredPhotos = localPhotos.filter(p => {
-            if (p.driveId === 'mock_drive_id') return true;
-            return validDriveIds.has(p.driveId);
-        });
+        // Only sync with Google Drive (Cloudinary doesn't need this)
+        if (isGoogleDrive()) {
+            try {
+                // 1. Get all valid file IDs from storage provider
+                const validFileIds = await listFiles();
 
-        // 2.1 Deduplicate by driveId (keep the first occurrence)
-        const seenIds = new Set();
-        const syncedPhotos = filteredPhotos.filter(p => {
-            if (p.driveId === 'mock_drive_id') return true;
-            if (seenIds.has(p.driveId)) return false;
-            seenIds.add(p.driveId);
-            return true;
-        }).map(p => {
-            // Force URL to be our local proxy if driveId exists
-            if (p.driveId && p.driveId !== 'mock_drive_id') {
-                return { ...p, url: `/api/image/${p.driveId}` };
-            }
-            return p;
-        });
+                // 2. Filter photos that still exist in storage
+                const filteredPhotos = localPhotos.filter(p => {
+                    if (p.driveId === 'mock_drive_id') return true;
+                    return validFileIds.has(p.driveId);
+                });
 
-        // 3. Remove deleted photos from database if any were removed
-        if (syncedPhotos.length !== localPhotos.length) {
-            const removedCount = localPhotos.length - syncedPhotos.length;
-            console.log(`[Photos API] Pruning ${removedCount} deleted drive photos from database.`);
+                // 2.1 Deduplicate by driveId (keep the first occurrence)
+                const seenIds = new Set();
+                syncedPhotos = filteredPhotos.filter(p => {
+                    if (p.driveId === 'mock_drive_id') return true;
+                    if (seenIds.has(p.driveId)) return false;
+                    seenIds.add(p.driveId);
+                    return true;
+                }).map(p => {
+                    // Force URL to be our local proxy if driveId exists
+                    if (p.driveId && p.driveId !== 'mock_drive_id') {
+                        return { ...p, url: `/api/image/${p.driveId}` };
+                    }
+                    return p;
+                });
 
-            // Find photos that were removed
-            const syncedDriveIds = new Set(syncedPhotos.map(p => p.driveId));
-            const photosToRemove = localPhotos.filter(p => !syncedDriveIds.has(p.driveId));
+                // 3. Remove deleted photos from database if any were removed
+                if (syncedPhotos.length !== localPhotos.length) {
+                    const removedCount = localPhotos.length - syncedPhotos.length;
+                    console.log(`[Photos API] Pruning ${removedCount} deleted photos from database.`);
 
-            // Delete each removed photo from database
-            for (const photo of photosToRemove) {
-                try {
-                    await photoRepo.deleteByDriveId(photo.driveId);
-                    console.log(`[Photos API] Deleted orphaned photo: ${photo.driveId}`);
-                } catch (error) {
-                    console.error(`[Photos API] Failed to delete photo ${photo.driveId}:`, error);
+                    // Find photos that were removed
+                    const syncedDriveIds = new Set(syncedPhotos.map(p => p.driveId));
+                    const photosToRemove = localPhotos.filter(p => !syncedDriveIds.has(p.driveId));
+
+                    // Delete each removed photo from database
+                    for (const photo of photosToRemove) {
+                        try {
+                            await photoRepo.deleteByDriveId(photo.driveId);
+                            console.log(`[Photos API] Deleted orphaned photo: ${photo.driveId}`);
+                        } catch (error) {
+                            console.error(`[Photos API] Failed to delete photo ${photo.driveId}:`, error);
+                        }
+                    }
                 }
+            } catch (syncError) {
+                console.warn('[Photos API] Storage sync failed, using database only:', syncError.message);
+                // Continue with local photos if sync fails
             }
         }
 

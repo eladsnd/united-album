@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { getFileStream } from '../../../../lib/storage/googleDrive';
+import { getPhotoStream } from '../../../../lib/storage/operations';
 import sharp from 'sharp';
 
-// GET /api/face-crop/[driveId] - Serve cropped face image
+// GET /api/face-crop/[driveId] - Serve cropped face image (provider-agnostic)
 export async function GET(request, { params }) {
     try {
         const { driveId } = await params; // Next.js 15+ requires awaiting params
@@ -13,15 +13,15 @@ export async function GET(request, { params }) {
         let w = parseInt(searchParams.get('w') || '100');
         let h = parseInt(searchParams.get('h') || '100');
 
-        console.log(`[Face Crop API] driveId: ${driveId}, crop: {x:${x}, y:${y}, w:${w}, h:${h}}`);
+        console.log(`[Face Crop API] fileId: ${driveId}, crop: {x:${x}, y:${y}, w:${w}, h:${h}}`);
 
         if (!driveId) {
-            console.error('[Face Crop API] Missing driveId parameter');
-            return NextResponse.json({ error: 'Missing driveId' }, { status: 400 });
+            console.error('[Face Crop API] Missing file ID parameter');
+            return NextResponse.json({ error: 'Missing file ID' }, { status: 400 });
         }
 
-        // Get the full image from Google Drive
-        const { stream: imageStream } = await getFileStream(driveId);
+        // Get the full image from storage provider
+        const { stream: imageStream } = await getPhotoStream(driveId);
 
         // Convert stream to buffer
         const chunks = [];

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { PhotoRepository } from '../../../lib/repositories/PhotoRepository.js';
-import { getFileStream } from '../../../lib/storage/googleDrive';
+import { getPhotoStream } from '../../../lib/storage/operations';
 import JSZip from 'jszip';
 import { applyRateLimit } from '../../../lib/middleware/rateLimit';
 import { downloadDriveFile } from '../../../lib/utils/streamUtils';
@@ -46,8 +46,8 @@ export async function POST(request) {
         // Download each photo and add to ZIP
         for (const photo of selectedPhotos) {
             try {
-                // Use centralized stream utility (DRY principle)
-                const buffer = await downloadDriveFile(getFileStream, photo.driveId);
+                // Use centralized stream utility (provider-agnostic)
+                const buffer = await downloadDriveFile(getPhotoStream, photo.driveId);
 
                 const filename = `${photo.poseId || 'photo'}-${photo.id}.jpg`;
                 zip.file(filename, buffer);
