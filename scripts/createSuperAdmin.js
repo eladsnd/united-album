@@ -33,10 +33,10 @@ async function main() {
   console.log('You only need to run this once.');
   console.log('');
 
-  // Get user input
-  const email = await question('Email address: ');
-  const password = await question('Password (min 8 chars): ');
-  const name = await question('Full name (optional): ');
+  // Get user input (trim to remove accidental spaces)
+  const email = (await question('Email address: ')).trim();
+  const password = (await question('Password (min 8 chars): ')).trim();
+  const name = (await question('Full name (optional): ')).trim();
 
   console.log('');
 
