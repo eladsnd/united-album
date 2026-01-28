@@ -1,5 +1,6 @@
 import "./globals.css";
 import { ToastProvider } from "../components/ToastContainer";
+import { EventProvider } from "@/lib/hooks/useEventContext";
 
 export const metadata = {
     title: "United Album - Wedding Pose Challenge",
@@ -15,9 +16,11 @@ export default function RootLayout({ children }) {
                 <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Playfair+Display:wght@400;600&display=swap" rel="stylesheet" />
             </head>
             <body>
-                <ToastProvider>
-                    {children}
-                </ToastProvider>
+                <EventProvider>
+                    <ToastProvider>
+                        {children}
+                    </ToastProvider>
+                </EventProvider>
             </body>
         </html>
     );
