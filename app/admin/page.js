@@ -49,79 +49,91 @@ export default function AdminPage() {
                 borderBottom: '2px solid #e5e7eb',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.06)'
             }}>
-                <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-                    <h1 style={{
-                        fontSize: '1.875rem',
-                        fontWeight: '700',
-                        background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4">
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        flexWrap: 'wrap',
+                        gap: '0.75rem'
                     }}>
-                        Admin Panel
-                    </h1>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                        <a
-                            href="/"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.75rem 1.5rem',
-                                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                color: 'white',
-                                fontWeight: '600',
-                                fontSize: '0.9375rem',
-                                borderRadius: '0.75rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                textDecoration: 'none',
-                                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                                transition: 'all 0.3s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
-                            }}
-                        >
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <path d="M19 12H5M12 19l-7-7 7-7"/>
-                            </svg>
-                            Back to Album
-                        </a>
-                        <button
-                            onClick={handleLogout}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.75rem 1.5rem',
-                                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                                color: 'white',
-                                fontWeight: '600',
-                                fontSize: '0.9375rem',
-                                borderRadius: '0.75rem',
-                                border: 'none',
-                                cursor: 'pointer',
-                                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
-                                transition: 'all 0.3s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
-                            }}
-                        >
-                            <LogOut size={18} strokeWidth={2.5} />
-                            Sign Out
-                        </button>
+                        <h1 style={{
+                            fontSize: 'clamp(1.25rem, 5vw, 1.875rem)',
+                            fontWeight: '700',
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text'
+                        }}>
+                            Admin Panel
+                        </h1>
+                        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <a
+                                href="/"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.625rem 1rem',
+                                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                    color: 'white',
+                                    fontWeight: '600',
+                                    fontSize: '0.875rem',
+                                    borderRadius: '0.75rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    textDecoration: 'none',
+                                    boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
+                                    transition: 'all 0.3s ease',
+                                    whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(16, 185, 129, 0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.3)';
+                                }}
+                            >
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                                </svg>
+                                <span className="hidden sm:inline">Back to Album</span>
+                                <span className="inline sm:hidden">Back</span>
+                            </a>
+                            <button
+                                onClick={handleLogout}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    padding: '0.625rem 1rem',
+                                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                                    color: 'white',
+                                    fontWeight: '600',
+                                    fontSize: '0.875rem',
+                                    borderRadius: '0.75rem',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                                    transition: 'all 0.3s ease',
+                                    whiteSpace: 'nowrap'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                    e.currentTarget.style.boxShadow = '0 6px 16px rgba(239, 68, 68, 0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.3)';
+                                }}
+                            >
+                                <LogOut size={16} strokeWidth={2.5} />
+                                <span className="hidden sm:inline">Sign Out</span>
+                                <span className="inline sm:hidden">Logout</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -130,19 +142,21 @@ export default function AdminPage() {
             <div style={{
                 background: 'linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%)',
                 borderBottom: '1px solid #e5e7eb',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                overflowX: 'auto',
+                WebkitOverflowScrolling: 'touch'
             }}>
-                <div className="max-w-7xl mx-auto px-6">
-                    <div style={{ display: 'flex', gap: '0.5rem', paddingTop: '0.75rem' }}>
+                <div className="max-w-7xl mx-auto px-4 sm:px-6">
+                    <div style={{ display: 'flex', gap: '0.375rem', paddingTop: '0.75rem', minWidth: 'max-content' }}>
                         <button
                             onClick={() => setActiveTab('poses')}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '0.625rem',
-                                padding: '0.875rem 1.5rem',
+                                gap: '0.5rem',
+                                padding: '0.75rem 1rem',
                                 fontWeight: '600',
-                                fontSize: '0.9375rem',
+                                fontSize: '0.875rem',
                                 borderRadius: '0.75rem 0.75rem 0 0',
                                 border: 'none',
                                 cursor: 'pointer',
@@ -155,6 +169,7 @@ export default function AdminPage() {
                                     ? '0 4px 12px rgba(59, 130, 246, 0.3), inset 0 1px 0 rgba(255,255,255,0.2)'
                                     : 'none',
                                 transform: activeTab === 'poses' ? 'translateY(0)' : 'translateY(2px)',
+                                whiteSpace: 'nowrap'
                             }}
                             onMouseEnter={(e) => {
                                 if (activeTab !== 'poses') {
@@ -169,8 +184,9 @@ export default function AdminPage() {
                                 }
                             }}
                         >
-                            <ImageIcon size={20} strokeWidth={2.5} />
-                            Pose Challenges
+                            <ImageIcon size={18} strokeWidth={2.5} />
+                            <span className="hidden sm:inline">Pose Challenges</span>
+                            <span className="inline sm:hidden">Poses</span>
                         </button>
 
                         <button

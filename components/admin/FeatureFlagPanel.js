@@ -144,53 +144,61 @@ export default function FeatureFlagPanel({ adminToken }) {
               className="card"
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: '1.5rem',
-                padding: '1.5rem',
+                flexDirection: 'column',
+                gap: '1rem',
+                padding: '1.25rem',
                 transition: 'all 0.3s ease',
                 border: enabled ? `2px solid ${feature.color}20` : '2px solid transparent',
                 background: enabled ? `${feature.color}08` : 'var(--glass)',
                 opacity: loading ? 0.6 : 1,
               }}
             >
-              {/* Icon */}
-              <div
-                style={{
-                  width: '4rem',
-                  height: '4rem',
-                  borderRadius: '1rem',
-                  background: feature.gradient,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                  boxShadow: `0 4px 12px ${feature.color}30`,
-                }}
-              >
-                <Icon size={28} color="white" strokeWidth={2.5} />
+              {/* Mobile: Stack vertically */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '1rem',
+              }}>
+                {/* Icon - smaller on mobile */}
+                <div
+                  style={{
+                    width: '3rem',
+                    height: '3rem',
+                    borderRadius: '0.75rem',
+                    background: feature.gradient,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                    boxShadow: `0 4px 12px ${feature.color}30`,
+                  }}
+                >
+                  <Icon size={24} color="white" strokeWidth={2.5} />
+                </div>
+
+                {/* Feature Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{
+                    fontSize: '1.125rem',
+                    fontWeight: '600',
+                    marginBottom: '0.25rem',
+                    color: enabled ? feature.color : 'inherit',
+                    transition: 'color 0.3s ease'
+                  }}>
+                    {feature.label}
+                  </h3>
+                  <p style={{
+                    fontSize: '0.8125rem',
+                    opacity: 0.7,
+                    margin: 0,
+                    lineHeight: '1.4'
+                  }}>
+                    {feature.description}
+                  </p>
+                </div>
               </div>
 
-              {/* Feature Info */}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '600',
-                  marginBottom: '0.5rem',
-                  color: enabled ? feature.color : 'inherit',
-                  transition: 'color 0.3s ease'
-                }}>
-                  {feature.label}
-                </h3>
-                <p style={{
-                  fontSize: '0.875rem',
-                  opacity: 0.7,
-                  margin: 0
-                }}>
-                  {feature.description}
-                </p>
-              </div>
-
-              {/* Toggle Button */}
+              {/* Toggle Button - full width on mobile */}
               <button
                 onClick={() => toggleFeature(feature.id)}
                 disabled={isDisabled}
@@ -198,9 +206,10 @@ export default function FeatureFlagPanel({ adminToken }) {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: '0.75rem',
                   padding: '0.875rem 1.5rem',
-                  fontSize: '1rem',
+                  fontSize: '0.9375rem',
                   fontWeight: '700',
                   borderRadius: '0.75rem',
                   background: enabled
@@ -215,13 +224,11 @@ export default function FeatureFlagPanel({ adminToken }) {
                   opacity: isDisabled ? 0.7 : 1,
                   transition: 'all 0.3s ease',
                   transform: isDisabled ? 'scale(0.98)' : 'scale(1)',
-                  width: '160px',
-                  justifyContent: 'center',
-                  flexShrink: 0,
+                  width: '100%',
                 }}
                 onMouseEnter={(e) => {
                   if (!isDisabled) {
-                    e.currentTarget.style.transform = 'scale(1.05) translateY(-2px)';
+                    e.currentTarget.style.transform = 'scale(1.02)';
                     e.currentTarget.style.boxShadow = enabled
                       ? `0 8px 20px ${feature.color}50, 0 4px 8px ${feature.color}40`
                       : '0 4px 12px rgba(0,0,0,0.12)';
