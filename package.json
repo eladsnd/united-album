@@ -21,9 +21,11 @@
   "dependencies": {
     "@prisma/client": "^6.19.2",
     "@vladmandic/face-api": "^1.7.15",
+    "bcryptjs": "^3.0.3",
     "density-clustering": "^1.3.0",
     "face-api.js": "latest",
     "googleapis": "latest",
+    "jsonwebtoken": "^9.0.3",
     "jszip": "^3.10.1",
     "lucide-react": "latest",
     "next": "latest",
