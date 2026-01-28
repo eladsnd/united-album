@@ -1,9 +1,9 @@
 "use client";
 import { useState, useEffect } from 'react';
-import AdminAuth from '../../components/AdminAuth';
-import AdminPoseManager from '../../components/AdminPoseManager';
-import AdminEventManager from '../../components/AdminEventManager';
-import FeatureFlagPanel from '../../components/FeatureFlagPanel';
+import AdminAuth from '../../components/admin/AdminAuth';
+import AdminPoseManager from '../../components/admin/AdminPoseManager';
+import AdminEventManager from '../../components/admin/AdminEventManager';
+import FeatureFlagPanel from '../../components/admin/FeatureFlagPanel';
 import { Image as ImageIcon, Calendar, Settings, LogOut, Zap } from 'lucide-react';
 
 export default function AdminPage() {
